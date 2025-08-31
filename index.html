@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CycleTracker Pro - Advanced Cycling Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            light: '#3B82F6',
+                            dark: '#60A5FA'
+                        },
+                        secondary: {
+                            light: '#10B981',
+                            dark: '#34D399'
+                        },
+                        dark: {
+                            bg: '#111827',
+                            card: '#1F2937',
+                            text: '#F9FAFB'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gps-accuracy-low { background-color: #FEF3C7; }
+        .gps-accuracy-medium { background-color: #D1FAE5; }
+        .gps-accuracy-high { background-color: #DBEAFE; }
+        .dark .gps-accuracy-low { background-color: #78350F; color: white; }
+        .dark .gps-accuracy-medium { background-color: #064E3B; color: white; }
+        .dark .gps-accuracy-high { background-color: #1E40AF; color: white; }
+        
+        @media (max-width: 640px) {
+            .mobile-optimized {
+                font-size: 0.9rem;
+            }
+        }
+        
+        @media (max-width: 300px) {
+            .watch-optimized {
+                padding: 0.25rem;
+                font-size: 0.7rem;
+            }
+        }
+        
+        /* Animation for recording state */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .recording {
+            animation: pulse 1.5s infinite;
+        }
+        
+        /* Map simulation */
+        .map-simulation {
+            background: linear-gradient(135deg, #4ade80, #3b82f6);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .path-point {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #ef4444;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        /* Theme switch */
+        .theme-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
+        }
+        
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #1F2937;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #F59E0B;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(30px);
+        }
+        
+        /* History panel */
+        .history-panel {
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .history-hidden {
+            transform: translateX(100%);
+        }
+        
+        /* Voice button */
+        .voice-btn.active {
+            background-color: #10B981;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 dark:bg-dark-bg dark:text-dark-text min-h-screen flex flex-col transition-colors duration-300">
+    <!-- Header -->
+    <header class="bg-white dark:bg-dark-card shadow-sm">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center">
+                <h1 class="text-xl font-bold text-primary-light dark:text-primary-dark">CycleTracker Pro</h1>
+                <label class="theme-switch ml-4">
+                    <input type="checkbox" id="theme-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center">
+                    <i class="fas fa-satellite text-secondary-light dark:text-secondary-dark mr-1"></i>
+                    <span id="gps-status" class="text-sm">GPS: Acquiring</span>
+                </div>
+                <button id="history-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <i class="fas fa-history"></i>
+                </button>
+                <button id="settings-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto px-4 py-6 flex">
+        <!-- Main Content -->
+        <div class="flex-1 mr-0 lg:mr-80">
+            <!-- Stats Overview -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 text-center">
+                    <p class="text-gray-500 dark:text-gray-400 text-sm">Distance</p>
+                    <p class="text-2xl font-bold"><span id="distance">0.00</span> km</p>
+                </div>
+                <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 text-center">
+                    <p class="text-gray-500 dark:text-gray-400 text-sm">Duration</p>
+                    <p class="text-2xl font-bold"><span id="duration">00:00:00</span></p>
+                </div>
+                <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 text-center">
+                    <p class="text-gray-500 dark:text-gray-400 text-sm">Speed</p>
+                    <p class="text-2xl font-bold"><span id="speed">0.0</span> km/h</p>
+                </div>
+                <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 text-center">
+                    <p class="text-gray-500 dark:text-gray-400 text-sm">Calories</p>
+                    <p class="text-2xl font-bold"><span id="calories">0</span></p>
+                </div>
+            </div>
+
+            <!-- Map Simulation -->
+            <div class="bg-white dark:bg-dark-card rounded-lg shadow mb-6 h-64 map-simulation relative" id="map-container">
+                <div class="absolute inset-0 flex items-center justify-center" id="map-placeholder">
+                    <div class="text-center text-white bg-black bg-opacity-50 p-4 rounded-lg">
+                        <i class="fas fa-map-marked-alt text-4xl mb-2"></i>
+                        <p>Map will appear when GPS is active</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex justify-center space-x-4 mb-6">
+                <button id="start-btn" class="bg-secondary-light dark:bg-secondary-dark hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full flex items-center">
+                    <i class="fas fa-play mr-2"></i> Start
+                </button>
+                <button id="pause-btn" disabled class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-8 rounded-full flex items-center opacity-50">
+                    <i class="fas fa-pause mr-2"></i> Pause
+                </button>
+                <button id="end-btn" disabled class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full flex items-center opacity-50">
+                    <i class="fas fa-flag mr-2"></i> End Ride
+                </button>
+            </div>
+
+            <!-- Additional Stats -->
+            <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 mb-6">
+                <h2 class="text-lg font-semibold mb-3">Trip Details</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-gray-500 dark:text-gray-400">Avg. Speed</p>
+                        <p class="text-xl"><span id="avg-speed">0.0</span> km/h</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 dark:text-gray-400">Max Speed</p>
+                        <p class="text-xl"><span id="max-speed">0.0</span> km/h</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 dark:text-gray-400">Pace</p>
+                        <p class="text-xl"><span id="pace">0:00</span> min/km</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 dark:text-gray-400">Elevation</p>
+                        <p class="text-xl"><span id="elevation">0</span> m</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Panel (initially hidden) -->
+            <div id="settings-panel" class="hidden bg-white dark:bg-dark-card rounded-lg shadow p-4 mb-6">
+                <h2 class="text-lg font-semibold mb-3">Settings</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300">Device Type</label>
+                        <select id="device-type" class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                            <option value="phone">Phone</option>
+                            <option value="watch">Smart Watch</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 dark:text-gray-300">GPS Accuracy Mode</label>
+                        <select id="gps-mode" class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                            <option value="high">High Accuracy (more battery)</option>
+                            <option value="balanced">Balanced</option>
+                            <option value="low" selected>Low Power (for weak GPS)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="flex items-center dark:text-gray-300">
+                            <input type="checkbox" id="auto-pause" class="mr-2" checked>
+                            <span>Auto-pause when stopped</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="flex items-center dark:text-gray-300">
+                            <input type="checkbox" id="battery-saver" class="mr-2" checked>
+                            <span>Battery Saver Mode</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="flex items-center dark:text-gray-300">
+                            <input type="checkbox" id="voice-guidance" class="mr-2">
+                            <span>Voice Guidance</span>
+                        </label>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="dark:text-gray-300">Voice Volume</span>
+                        <input type="range" id="voice-volume" min="0" max="1" step="0.1" value="0.7" class="w-24">
+                    </div>
+                    <div>
+                        <button id="test-voice" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">
+                            Test Voice
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- History Panel -->
+        <div id="history-panel" class="history-panel history-hidden fixed lg:relative top-0 right-0 h-full w-80 bg-white dark:bg-dark-card shadow-lg z-10 lg:z-0 overflow-y-auto">
+            <div class="p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">Ride History</h2>
+                    <button id="close-history" class="lg:hidden p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="history-list" class="space-y-4">
+                    <!-- History items will be added here -->
+                    <div class="text-center py-4 text-gray-500 dark:text-gray-400">
+                        <p>No ride history yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white dark:bg-dark-card shadow-inner py-4">
+        <div class="container mx-auto px-4 text-center text-gray-600 dark:text-gray-400 text-sm">
+            <p>CycleTracker Pro - Works on phones and smartwatches, even with weak GPS signals</p>
+        </div>
+    </footer>
+
+    <script>
+        // App state
+        let isTracking = false;
+        let isPaused = false;
+        let startTime = null;
+        let pausedTime = 0;
+        let timerInterval = null;
+        let totalDistance = 0;
+        let currentSpeed = 0;
+        let maxSpeed = 0;
+        let lastPosition = null;
+        let positionHistory = [];
+        let watchId = null;
+        let voiceEnabled = false;
+        let voiceVolume = 0.7;
+        let speechSynth = window.speechSynthesis;
+        
+        // DOM Elements
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const endBtn = document.getElementById('end-btn');
+        const distanceEl = document.getElementById('distance');
+        const durationEl = document.getElementById('duration');
+        const speedEl = document.getElementById('speed');
+        const caloriesEl = document.getElementById('calories');
+        const avgSpeedEl = document.getElementById('avg-speed');
+        const maxSpeedEl = document.getElementById('max-speed');
+        const paceEl = document.getElementById('pace');
+        const elevationEl = document.getElementById('elevation');
+        const gpsStatusEl = document.getElementById('gps-status');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsPanel = document.getElementById('settings-panel');
+        const deviceTypeSelect = document.getElementById('device-type');
+        const gpsModeSelect = document.getElementById('gps-mode');
+        const historyBtn = document.getElementById('history-btn');
+        const historyPanel = document.getElementById('history-panel');
+        const closeHistoryBtn = document.getElementById('close-history');
+        const historyList = document.getElementById('history-list');
+        const themeToggle = document.getElementById('theme-toggle');
+        const voiceGuidanceCheckbox = document.getElementById('voice-guidance');
+        const voiceVolumeSlider = document.getElementById('voice-volume');
+        const testVoiceBtn = document.getElementById('test-voice');
+        const mapContainer = document.getElementById('map-container');
+        const mapPlaceholder = document.getElementById('map-placeholder');
+        
+        // Check if device is a smartwatch (simplified)
+        function checkIfSmartwatch() {
+            return window.screen.width < 400 || window.screen.height < 400 || 
+                   navigator.userAgent.includes('Watch') || 
+                   deviceTypeSelect.value === 'watch';
+        }
+        
+        // Apply device-specific optimizations
+        function applyDeviceOptimizations() {
+            if (checkIfSmartwatch()) {
+                document.body.classList.add('watch-optimized');
+                document.body.classList.remove('mobile-optimized');
+                // Simplify UI for watch
+                document.querySelectorAll('p, span, button').forEach(el => {
+                    el.classList.add('text-sm');
+                });
+            } else {
+                document.body.classList.add('mobile-optimized');
+                document.body.classList.remove('watch-optimized');
+            }
+        }
+        
+        // Initialize the app
+        function initApp() {
+            applyDeviceOptimizations();
+            loadRideHistory();
+            
+            // Check if Geolocation is available
+            if (!navigator.geolocation) {
+                gpsStatusEl.textContent = 'GPS: Not Supported';
+                startBtn.disabled = true;
+                return;
+            }
+            
+            // Try to get current position to test GPS
+            navigator.geolocation.getCurrentPosition(
+                () => gpsStatusEl.textContent = 'GPS: Ready',
+                () => gpsStatusEl.textContent = 'GPS: Error'
+            );
+            
+            // Check if speech synthesis is supported
+            if (!speechSynth) {
+                voiceGuidanceCheckbox.disabled = true;
+                voiceGuidanceCheckbox.parentElement.innerHTML += '<span class="text-red-500 text-sm"> (Not supported)</span>';
+            }
+            
+            // Set up theme from localStorage or system preference
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                themeToggle.checked = true;
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeToggle.checked = false;
+            }
+        }
+        
+        // Calculate distance between two coordinates (Haversine formula)
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+        
+        // Format time
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // Calculate calories (simplified)
+        function calculateCalories(distance, time) {
+            // Rough estimate: 30 calories per km
+            return Math.round(distance * 30);
+        }
+        
+        // Update stats display
+        function updateStats() {
+            const currentTime = new Date();
+            const elapsedTime = isPaused ? pausedTime : currentTime - startTime - pausedTime;
+            
+            distanceEl.textContent = totalDistance.toFixed(2);
+            durationEl.textContent = formatTime(elapsedTime);
+            speedEl.textContent = currentSpeed.toFixed(1);
+            caloriesEl.textContent = calculateCalories(totalDistance, elapsedTime);
+            
+            // Calculate average speed
+            const hours = elapsedTime / 3600000; // convert ms to hours
+            const avgSpeed = hours > 0 ? totalDistance / hours : 0;
+            avgSpeedEl.textContent = avgSpeed.toFixed(1);
+            
+            // Update max speed
+            maxSpeedEl.textContent = maxSpeed.toFixed(1);
+            
+            // Calculate pace (min/km)
+            const pace = totalDistance > 0 ? (elapsedTime / 1000) / 60 / totalDistance : 0;
+            const paceMin = Math.floor(pace);
+            const paceSec = Math.floor((pace - paceMin) * 60);
+            paceEl.textContent = `${paceMin}:${paceSec.toString().padStart(2, '0')}`;
+        }
+        
+        // Start tracking
+        function startTracking() {
+            if (isTracking && !isPaused) return;
+            
+            // If resuming from pause
+            if (isPaused) {
+                isPaused = false;
+                startTime = new Date(new Date() - pausedTime);
+                pauseBtn.innerHTML = '<i class="fas fa-pause mr-2"></i> Pause';
+                pauseBtn.classList.remove('bg-green-500');
+                pauseBtn.classList.add('bg-yellow-500');
+                
+                if (voiceEnabled) {
+                    speak("Ride resumed");
+                }
+            } else {
+                // Starting fresh ride
+                isTracking = true;
+                startTime = new Date();
+                totalDistance = 0;
+                maxSpeed = 0;
+                positionHistory = [];
+                pausedTime = 0;
+                
+                // UI updates
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+                endBtn.disabled = false;
+                startBtn.classList.remove('bg-secondary-light', 'dark:bg-secondary-dark');
+                startBtn.classList.add('bg-gray-400');
+                pauseBtn.classList.remove('opacity-50');
+                endBtn.classList.remove('opacity-50');
+                
+                if (voiceEnabled) {
+                    speak("Ride started");
+                }
+            }
+            
+            // Start timer
+            timerInterval = setInterval(updateStats, 1000);
+            
+            // Start GPS tracking with selected mode
+            const options = {
+                enableHighAccuracy: gpsModeSelect.value === 'high',
+                maximumAge: gpsModeSelect.value === 'low' ? 10000 : 5000,
+                timeout: gpsModeSelect.value === 'low' ? 10000 : 5000
+            };
+            
+            watchId = navigator.geolocation.watchPosition(
+                positionSuccess,
+                positionError,
+                options
+            );
+            
+            // Add recording animation to map container
+            mapContainer.classList.add('recording');
+        }
+        
+        // Pause tracking
+        function pauseTracking() {
+            if (!isTracking || isPaused) return;
+            
+            isPaused = true;
+            pausedTime = new Date() - startTime;
+            
+            // UI updates
+            pauseBtn.innerHTML = '<i class="fas fa-play mr-2"></i> Resume';
+            pauseBtn.classList.remove('bg-yellow-500');
+            pauseBtn.classList.add('bg-green-500');
+            
+            // Stop timer and GPS
+            clearInterval(timerInterval);
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            
+            // Remove recording animation
+            mapContainer.classList.remove('recording');
+            
+            if (voiceEnabled) {
+                speak("Ride paused");
+            }
+        }
+        
+        // End tracking and save ride
+        function endTracking() {
+            if (!isTracking) return;
+            
+            isTracking = false;
+            isPaused = false;
+            
+            // UI updates
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            endBtn.disabled = true;
+            startBtn.classList.add('bg-secondary-light', 'dark:bg-secondary-dark');
+            startBtn.classList.remove('bg-gray-400');
+            pauseBtn.classList.add('opacity-50');
+            endBtn.classList.add('opacity-50');
+            pauseBtn.innerHTML = '<i class="fas fa-pause mr-2"></i> Pause';
+            pauseBtn.classList.remove('bg-green-500');
+            pauseBtn.classList.add('bg-yellow-500');
+            
+            // Stop timer and GPS
+            clearInterval(timerInterval);
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            
+            // Remove recording animation
+            mapContainer.classList.remove('recording');
+            
+            // Save ride to history
+            saveRide();
+            
+            if (voiceEnabled) {
+                speak("Ride completed. Distance " + totalDistance.toFixed(1) + " kilometers");
+            }
+            
+            // Reset stats
+            totalDistance = 0;
+            currentSpeed = 0;
+            maxSpeed = 0;
+            updateStats();
+            
+            // Clear map
+            clearMap();
+        }
+        
+        // Handle successful position retrieval
+        function positionSuccess(position) {
+            const { latitude, longitude, accuracy, speed, altitude } = position.coords;
+            
+            // Update GPS status with accuracy info
+            let accuracyStatus = 'High';
+            let statusClass = 'gps-accuracy-high';
+            
+            if (accuracy > 50) {
+                accuracyStatus = 'Low';
+                statusClass = 'gps-accuracy-low';
+            } else if (accuracy > 20) {
+                accuracyStatus = 'Medium';
+                statusClass = 'gps-accuracy-medium';
+            }
+            
+            gpsStatusEl.innerHTML = `GPS: ${accuracyStatus} (${Math.round(accuracy)}m)`;
+            gpsStatusEl.className = 'text-sm px-2 py-1 rounded ' + statusClass;
+            
+            // Update current speed (convert m/s to km/h)
+            currentSpeed = speed !== null ? speed * 3.6 : 0;
+            
+            // Update max speed
+            if (currentSpeed > maxSpeed) {
+                maxSpeed = currentSpeed;
+            }
+            
+            // Calculate distance if we have a previous position
+            if (lastPosition) {
+                const distance = calculateDistance(
+                    lastPosition.latitude,
+                    lastPosition.longitude,
+                    latitude,
+                    longitude
+                );
+                
+                // Only add distance if it's reasonable (filter out GPS jumps)
+                if (distance < 0.5) { // Filter distances > 500m as likely GPS errors
+                    totalDistance += distance;
+                    
+                    // Auto-pause if enabled and speed is very low
+                    const autoPauseEnabled = document.getElementById('auto-pause').checked;
+                    if (autoPauseEnabled && currentSpeed < 1 && isTracking && !isPaused) {
+                        pauseTracking();
+                    }
+                }
+            }
+            
+            // Store current position
+            lastPosition = { latitude, longitude };
+            positionHistory.push({
+                lat: latitude,
+                lng: longitude,
+                timestamp: Date.now()
+            });
+            
+            // Update elevation if available
+            if (altitude !== null) {
+                elevationEl.textContent = Math.round(altitude);
+            }
+            
+            // Update map visualization
+            updateMapPosition(latitude, longitude);
+            
+            // Voice updates every kilometer
+            if (voiceEnabled && Math.floor(totalDistance) > Math.floor(totalDistance - calculateDistance(
+                lastPosition.latitude,
+                lastPosition.longitude,
+                latitude,
+                longitude
+            ))) {
+                speak(`You have cycled ${Math.floor(totalDistance)} kilometers`);
+            }
+        }
+        
+        // Handle position errors
+        function positionError(error) {
+            console.error('Geolocation error:', error);
+            let message = 'Unknown error';
+            
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message = 'Permission denied';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message = 'Position unavailable';
+                    break;
+                case error.TIMEOUT:
+                    message = 'Request timeout';
+                    // For weak GPS devices, we might want to continue with last known position
+                    break;
+            }
+            
+            gpsStatusEl.textContent = `GPS: Error - ${message}`;
+            gpsStatusEl.className = 'text-sm bg-red-100 text-red-800 px-2 py-1 rounded';
+        }
+        
+        // Update map position visualization
+        function updateMapPosition(lat, lng) {
+            // Hide placeholder after first position
+            if (mapPlaceholder.style.display !== 'none') {
+                mapPlaceholder.style.display = 'none';
+            }
+            
+            // Create a new point for the path
+            const point = document.createElement('div');
+            point.className = 'path-point';
+            
+            // Convert lat/lng to pixel coordinates (simulated)
+            const x = 50 + (lng * 1000 % 90);
+            const y = 50 + (lat * 1000 % 90);
+            
+            point.style.left = `${x}%`;
+            point.style.top = `${y}%`;
+            
+            mapContainer.appendChild(point);
+        }
+        
+        // Clear map visualization
+        function clearMap() {
+            // Remove all path points
+            const points = document.querySelectorAll('.path-point');
+            points.forEach(point => point.remove());
+            
+            // Show placeholder again
+            mapPlaceholder.style.display = 'flex';
+        }
+        
+        // Save ride to history
+        function saveRide() {
+            const ride = {
+                id: Date.now(),
+                date: new Date().toISOString(),
+                distance: totalDistance,
+                duration: new Date() - startTime - pausedTime,
+                avgSpeed: totalDistance / ((new Date() - startTime - pausedTime) / 3600000),
+                maxSpeed: maxSpeed,
+                calories: calculateCalories(totalDistance, new Date() - startTime - pausedTime)
+            };
+            
+            // Get existing history or initialize empty array
+            const history = JSON.parse(localStorage.getItem('rideHistory') || '[]');
+            
+            // Add new ride to beginning of array
+            history.unshift(ride);
+            
+            // Keep only last 20 rides
+            if (history.length > 20) {
+                history.pop();
+            }
+            
+            // Save back to localStorage
+            localStorage.setItem('rideHistory', JSON.stringify(history));
+            
+            // Update history display
+            loadRideHistory();
+        }
+        
+        // Load ride history from storage
+        function loadRideHistory() {
+            const history = JSON.parse(localStorage.getItem('rideHistory') || '[]');
+            
+            if (history.length === 0) {
+                historyList.innerHTML = '<div class="text-center py-4 text-gray-500 dark:text-gray-400"><p>No ride history yet</p></div>';
+                return;
+            }
+            
+            historyList.innerHTML = '';
+            
+            history.forEach(ride => {
+                const rideDate = new Date(ride.date);
+                const rideElement = document.createElement('div');
+                rideElement.className = 'bg-gray-100 dark:bg-gray-800 p-3 rounded-lg';
+                rideElement.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-semibold">${rideDate.toLocaleDateString()}</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">${rideDate.toLocaleTimeString()}</p>
+                        </div>
+                        <span class="bg-primary-light dark:bg-primary-dark text-white text-xs px-2 py-1 rounded-full">${ride.distance.toFixed(1)} km</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-2 text-sm">
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Time:</span>
+                            <p>${formatTime(ride.duration)}</p>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Avg Speed:</span>
+                            <p>${ride.avgSpeed.toFixed(1)} km/h</p>
+                        </div>
+                    </div>
+                `;
+                
+                historyList.appendChild(rideElement);
+            });
+        }
+        
+        // Speak text using speech synthesis
+        function speak(text) {
+            if (!voiceEnabled || !speechSynth) return;
+            
+            // Cancel any ongoing speech
+            speechSynth.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.volume = voiceVolume;
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            
+            speechSynth.speak(utterance);
+        }
+        
+        // Event listeners
+        startBtn.addEventListener('click', startTracking);
+        pauseBtn.addEventListener('click', function() {
+            if (isPaused) {
+                startTracking();
+            } else {
+                pauseTracking();
+            }
+        });
+        endBtn.addEventListener('click', endTracking);
+        
+        settingsBtn.addEventListener('click', () => {
+            settingsPanel.classList.toggle('hidden');
+        });
+        
+        historyBtn.addEventListener('click', () => {
+            historyPanel.classList.remove('history-hidden');
+        });
+        
+        closeHistoryBtn.addEventListener('click', () => {
+            historyPanel.classList.add('history-hidden');
+        });
+        
+        deviceTypeSelect.addEventListener('change', applyDeviceOptimizations);
+        
+        themeToggle.addEventListener('change', function() {
+            if (this.checked) {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            }
+        });
+        
+        voiceGuidanceCheckbox.addEventListener('change', function() {
+            voiceEnabled = this.checked;
+        });
+        
+        voiceVolumeSlider.addEventListener('input', function() {
+            voiceVolume = parseFloat(this.value);
+        });
+        
+        testVoiceBtn.addEventListener('click', function() {
+            speak("This is a test of the voice guidance system");
+        });
+        
+        // Initialize the app
+        initApp();
+    </script>
+</body>
+</html>
