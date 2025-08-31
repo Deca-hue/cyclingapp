@@ -38,9 +38,24 @@
         .dark .gps-accuracy-medium { background-color: #064E3B; color: white; }
         .dark .gps-accuracy-high { background-color: #1E40AF; color: white; }
         
+        /* Mobile-first responsive design */
         @media (max-width: 640px) {
-            .mobile-optimized {
-                font-size: 0.9rem;
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem;
+            }
+            
+            .button-group {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .button-group button {
+                width: 100%;
+            }
+            
+            .compact-text {
+                font-size: 0.8rem;
             }
         }
         
@@ -48,6 +63,10 @@
             .watch-optimized {
                 padding: 0.25rem;
                 font-size: 0.7rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
             }
         }
         
@@ -138,146 +157,159 @@
             background-color: #10B981;
             color: white;
         }
+        
+        /* Touch-friendly elements */
+        .touch-button {
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 dark:bg-dark-bg dark:text-dark-text min-h-screen flex flex-col transition-colors duration-300">
     <!-- Header -->
-    <header class="bg-white dark:bg-dark-card shadow-sm">
-        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+    <header class="bg-white dark:bg-dark-card shadow-sm sticky top-0 z-10">
+        <div class="container mx-auto px-3 py-2 flex justify-between items-center">
             <div class="flex items-center">
-                <h1 class="text-xl font-bold text-primary-light dark:text-primary-dark">CycleTracker Pro</h1>
-                <label class="theme-switch ml-4">
+                <h1 class="text-lg font-bold text-primary-light dark:text-primary-dark flex items-center">
+                    <i class="fas fa-bicycle mr-2"></i>CycleTracker Pro
+                </h1>
+                <label class="theme-switch ml-3">
                     <input type="checkbox" id="theme-toggle">
                     <span class="slider"></span>
                 </label>
             </div>
-            <div class="flex items-center space-x-4">
-                <div class="flex items-center">
-                    <i class="fas fa-satellite text-secondary-light dark:text-secondary-dark mr-1"></i>
-                    <span id="gps-status" class="text-sm">GPS: Acquiring</span>
+            <div class="flex items-center space-x-2">
+                <div class="flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                    <i class="fas fa-satellite text-secondary-light dark:text-secondary-dark mr-1 text-sm"></i>
+                    <span id="gps-status" class="text-xs">GPS: Acquiring</span>
                 </div>
-                <button id="history-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                <button id="history-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 touch-button">
                     <i class="fas fa-history"></i>
                 </button>
-                <button id="settings-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                <button id="voice-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 touch-button">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+                <button id="settings-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 touch-button">
                     <i class="fas fa-cog"></i>
                 </button>
             </div>
         </div>
     </header>
 
-    <main class="flex-grow container mx-auto px-4 py-6 flex">
+    <main class="flex-grow container mx-auto px-3 py-4 flex">
         <!-- Main Content -->
         <div class="flex-1 mr-0 lg:mr-80">
             <!-- Stats Overview -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 text-center">
-                    <p class="text-gray-500 dark:text-gray-400 text-sm">Distance</p>
-                    <p class="text-2xl font-bold"><span id="distance">0.00</span> km</p>
+            <div class="stats-grid grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div class="bg-white dark:bg-dark-card rounded-lg shadow p-3 text-center">
+                    <p class="text-gray-500 dark:text-gray-400 text-xs compact-text">Distance</p>
+                    <p class="text-xl font-bold"><span id="distance">0.00</span> <span class="text-sm">km</span></p>
                 </div>
-                <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 text-center">
-                    <p class="text-gray-500 dark:text-gray-400 text-sm">Duration</p>
-                    <p class="text-2xl font-bold"><span id="duration">00:00:00</span></p>
+                <div class="bg-white dark:bg-dark-card rounded-lg shadow p-3 text-center">
+                    <p class="text-gray-500 dark:text-gray-400 text-xs compact-text">Duration</p>
+                    <p class="text-xl font-bold compact-text"><span id="duration">00:00:00</span></p>
                 </div>
-                <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 text-center">
-                    <p class="text-gray-500 dark:text-gray-400 text-sm">Speed</p>
-                    <p class="text-2xl font-bold"><span id="speed">0.0</span> km/h</p>
+                <div class="bg-white dark:bg-dark-card rounded-lg shadow p-3 text-center">
+                    <p class="text-gray-500 dark:text-gray-400 text-xs compact-text">Speed</p>
+                    <p class="text-xl font-bold"><span id="speed">0.0</span> <span class="text-sm">km/h</span></p>
                 </div>
-                <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 text-center">
-                    <p class="text-gray-500 dark:text-gray-400 text-sm">Calories</p>
-                    <p class="text-2xl font-bold"><span id="calories">0</span></p>
+                <div class="bg-white dark:bg-dark-card rounded-lg shadow p-3 text-center">
+                    <p class="text-gray-500 dark:text-gray-400 text-xs compact-text">Calories</p>
+                    <p class="text-xl font-bold"><span id="calories">0</span></p>
                 </div>
             </div>
 
             <!-- Map Simulation -->
-            <div class="bg-white dark:bg-dark-card rounded-lg shadow mb-6 h-64 map-simulation relative" id="map-container">
+            <div class="map-simulation bg-white dark:bg-dark-card rounded-lg shadow mb-4 h-64 relative" id="map-container">
                 <div class="absolute inset-0 flex items-center justify-center" id="map-placeholder">
                     <div class="text-center text-white bg-black bg-opacity-50 p-4 rounded-lg">
-                        <i class="fas fa-map-marked-alt text-4xl mb-2"></i>
-                        <p>Map will appear when GPS is active</p>
+                        <i class="fas fa-map-marked-alt text-3xl mb-2"></i>
+                        <p class="text-sm">Map will appear when GPS is active</p>
                     </div>
                 </div>
             </div>
 
             <!-- Controls -->
-            <div class="flex justify-center space-x-4 mb-6">
-                <button id="start-btn" class="bg-secondary-light dark:bg-secondary-dark hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full flex items-center">
-                    <i class="fas fa-play mr-2"></i> Start
+            <div class="button-group flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-3 mb-4">
+                <button id="start-btn" class="touch-button bg-secondary-light dark:bg-secondary-dark hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full flex items-center justify-center">
+                    <i class="fas fa-play mr-2"></i> Start Ride
                 </button>
-                <button id="pause-btn" disabled class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-8 rounded-full flex items-center opacity-50">
-                    <i class="fas fa-pause mr-2"></i> Pause
-                </button>
-                <button id="end-btn" disabled class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full flex items-center opacity-50">
-                    <i class="fas fa-flag mr-2"></i> End Ride
-                </button>
+                <div class="flex space-x-2">
+                    <button id="pause-btn" disabled class="touch-button flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-full flex items-center justify-center opacity-50">
+                        <i class="fas fa-pause mr-2"></i> Pause
+                    </button>
+                    <button id="end-btn" disabled class="touch-button flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-full flex items-center justify-center opacity-50">
+                        <i class="fas fa-flag mr-2"></i> End Ride
+                    </button>
+                </div>
             </div>
 
             <!-- Additional Stats -->
-            <div class="bg-white dark:bg-dark-card rounded-lg shadow p-4 mb-6">
-                <h2 class="text-lg font-semibold mb-3">Trip Details</h2>
-                <div class="grid grid-cols-2 gap-4">
+            <div class="bg-white dark:bg-dark-card rounded-lg shadow p-3 mb-4">
+                <h2 class="text-base font-semibold mb-2 flex items-center">
+                    <i class="fas fa-info-circle mr-2 text-primary-light dark:text-primary-dark"></i>Trip Details
+                </h2>
+                <div class="grid grid-cols-2 gap-3 compact-text">
                     <div>
-                        <p class="text-gray-500 dark:text-gray-400">Avg. Speed</p>
-                        <p class="text-xl"><span id="avg-speed">0.0</span> km/h</p>
+                        <p class="text-gray-500 dark:text-gray-400 text-xs">Avg. Speed</p>
+                        <p class="text-lg"><span id="avg-speed">0.0</span> km/h</p>
                     </div>
                     <div>
-                        <p class="text-gray-500 dark:text-gray-400">Max Speed</p>
-                        <p class="text-xl"><span id="max-speed">0.0</span> km/h</p>
+                        <p class="text-gray-500 dark:text-gray-400 text-xs">Max Speed</p>
+                        <p class="text-lg"><span id="max-speed">0.0</span> km/h</p>
                     </div>
                     <div>
-                        <p class="text-gray-500 dark:text-gray-400">Pace</p>
-                        <p class="text-xl"><span id="pace">0:00</span> min/km</p>
+                        <p class="text-gray-500 dark:text-gray-400 text-xs">Pace</p>
+                        <p class="text-lg"><span id="pace">0:00</span> min/km</p>
                     </div>
                     <div>
-                        <p class="text-gray-500 dark:text-gray-400">Elevation</p>
-                        <p class="text-xl"><span id="elevation">0</span> m</p>
+                        <p class="text-gray-500 dark:text-gray-400 text-xs">Elevation</p>
+                        <p class="text-lg"><span id="elevation">0</span> m</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Settings Panel (initially hidden) -->
-            <div id="settings-panel" class="hidden bg-white dark:bg-dark-card rounded-lg shadow p-4 mb-6">
-                <h2 class="text-lg font-semibold mb-3">Settings</h2>
-                <div class="space-y-4">
+            <!-- Settings Panel -->
+            <div id="settings-panel" class="hidden bg-white dark:bg-dark-card rounded-lg shadow p-3 mb-4">
+                <h2 class="text-base font-semibold mb-2 flex items-center">
+                    <i class="fas fa-cog mr-2 text-primary-light dark:text-primary-dark"></i>Settings
+                </h2>
+                <div class="space-y-3">
                     <div>
-                        <label class="block text-gray-700 dark:text-gray-300">Device Type</label>
-                        <select id="device-type" class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                        <label class="block text-gray-700 dark:text-gray-300 text-sm mb-1">Device Type</label>
+                        <select id="device-type" class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600 touch-button">
                             <option value="phone">Phone</option>
                             <option value="watch">Smart Watch</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-gray-700 dark:text-gray-300">GPS Accuracy Mode</label>
-                        <select id="gps-mode" class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
-                            <option value="high">High Accuracy (more battery)</option>
+                        <label class="block text-gray-700 dark:text-gray-300 text-sm mb-1">GPS Mode</label>
+                        <select id="gps-mode" class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600 touch-button">
+                            <option value="high">High Accuracy</option>
                             <option value="balanced">Balanced</option>
-                            <option value="low" selected>Low Power (for weak GPS)</option>
+                            <option value="low" selected>Low Power Mode</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="flex items-center dark:text-gray-300">
-                            <input type="checkbox" id="auto-pause" class="mr-2" checked>
-                            <span>Auto-pause when stopped</span>
-                        </label>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="auto-pause" class="mr-2 h-5 w-5 touch-button" checked>
+                        <label for="auto-pause" class="text-gray-700 dark:text-gray-300 text-sm">Auto-pause when stopped</label>
                     </div>
-                    <div>
-                        <label class="flex items-center dark:text-gray-300">
-                            <input type="checkbox" id="battery-saver" class="mr-2" checked>
-                            <span>Battery Saver Mode</span>
-                        </label>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="battery-saver" class="mr-2 h-5 w-5 touch-button" checked>
+                        <label for="battery-saver" class="text-gray-700 dark:text-gray-300 text-sm">Battery Saver Mode</label>
                     </div>
-                    <div>
-                        <label class="flex items-center dark:text-gray-300">
-                            <input type="checkbox" id="voice-guidance" class="mr-2">
-                            <span>Voice Guidance</span>
-                        </label>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="voice-guidance" class="mr-2 h-5 w-5 touch-button">
+                        <label for="voice-guidance" class="text-gray-700 dark:text-gray-300 text-sm">Voice Guidance</label>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="dark:text-gray-300">Voice Volume</span>
+                        <span class="dark:text-gray-300 text-sm">Voice Volume</span>
                         <input type="range" id="voice-volume" min="0" max="1" step="0.1" value="0.7" class="w-24">
                     </div>
                     <div>
-                        <button id="test-voice" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">
+                        <button id="test-voice" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded touch-button">
                             Test Voice
                         </button>
                     </div>
@@ -290,7 +322,7 @@
             <div class="p-4">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-semibold">Ride History</h2>
-                    <button id="close-history" class="lg:hidden p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <button id="close-history" class="lg:hidden p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 touch-button">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -305,8 +337,8 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white dark:bg-dark-card shadow-inner py-4">
-        <div class="container mx-auto px-4 text-center text-gray-600 dark:text-gray-400 text-sm">
+    <footer class="bg-white dark:bg-dark-card shadow-inner py-3 mt-auto">
+        <div class="container mx-auto px-3 text-center text-gray-600 dark:text-gray-400 text-xs">
             <p>CycleTracker Pro - Works on phones and smartwatches, even with weak GPS signals</p>
         </div>
     </footer>
@@ -327,6 +359,7 @@
         let voiceEnabled = false;
         let voiceVolume = 0.7;
         let speechSynth = window.speechSynthesis;
+        let currentTheme = 'light';
         
         // DOM Elements
         const startBtn = document.getElementById('start-btn');
@@ -350,6 +383,7 @@
         const closeHistoryBtn = document.getElementById('close-history');
         const historyList = document.getElementById('history-list');
         const themeToggle = document.getElementById('theme-toggle');
+        const voiceBtn = document.getElementById('voice-btn');
         const voiceGuidanceCheckbox = document.getElementById('voice-guidance');
         const voiceVolumeSlider = document.getElementById('voice-volume');
         const testVoiceBtn = document.getElementById('test-voice');
@@ -399,17 +433,32 @@
             // Check if speech synthesis is supported
             if (!speechSynth) {
                 voiceGuidanceCheckbox.disabled = true;
+                voiceBtn.disabled = true;
                 voiceGuidanceCheckbox.parentElement.innerHTML += '<span class="text-red-500 text-sm"> (Not supported)</span>';
             }
             
             // Set up theme from localStorage or system preference
             if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                document.documentElement.classList.add('dark');
-                themeToggle.checked = true;
+                enableDarkMode();
             } else {
-                document.documentElement.classList.remove('dark');
-                themeToggle.checked = false;
+                enableLightMode();
             }
+        }
+        
+        // Enable dark mode
+        function enableDarkMode() {
+            document.documentElement.classList.add('dark');
+            themeToggle.checked = true;
+            currentTheme = 'dark';
+            localStorage.theme = 'dark';
+        }
+        
+        // Enable light mode
+        function enableLightMode() {
+            document.documentElement.classList.remove('dark');
+            themeToggle.checked = false;
+            currentTheme = 'light';
+            localStorage.theme = 'light';
         }
         
         // Calculate distance between two coordinates (Haversine formula)
@@ -433,6 +482,12 @@
             const seconds = totalSeconds % 60;
             
             return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // Format date for history
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }
         
         // Calculate calories (simplified)
@@ -614,7 +669,7 @@
             }
             
             gpsStatusEl.innerHTML = `GPS: ${accuracyStatus} (${Math.round(accuracy)}m)`;
-            gpsStatusEl.className = 'text-sm px-2 py-1 rounded ' + statusClass;
+            gpsStatusEl.className = 'text-xs px-2 py-1 rounded-full ' + statusClass;
             
             // Update current speed (convert m/s to km/h)
             currentSpeed = speed !== null ? speed * 3.6 : 0;
@@ -691,7 +746,7 @@
             }
             
             gpsStatusEl.textContent = `GPS: Error - ${message}`;
-            gpsStatusEl.className = 'text-sm bg-red-100 text-red-800 px-2 py-1 rounded';
+            gpsStatusEl.className = 'text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full';
         }
         
         // Update map position visualization
@@ -773,20 +828,24 @@
                 rideElement.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div>
-                            <h3 class="font-semibold">${rideDate.toLocaleDateString()}</h3>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">${rideDate.toLocaleTimeString()}</p>
+                            <h3 class="font-semibold">${formatDate(ride.date)}</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">${formatTime(ride.duration)}</p>
                         </div>
                         <span class="bg-primary-light dark:bg-primary-dark text-white text-xs px-2 py-1 rounded-full">${ride.distance.toFixed(1)} km</span>
                     </div>
                     <div class="grid grid-cols-2 gap-2 mt-2 text-sm">
                         <div>
-                            <span class="text-gray-500 dark:text-gray-400">Time:</span>
-                            <p>${formatTime(ride.duration)}</p>
-                        </div>
-                        <div>
                             <span class="text-gray-500 dark:text-gray-400">Avg Speed:</span>
                             <p>${ride.avgSpeed.toFixed(1)} km/h</p>
                         </div>
+                        <div>
+                            <span class="text-gray-500 dark:text-gray-400">Max Speed:</span>
+                            <p>${ride.maxSpeed.toFixed(1)} km/h</p>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-sm">
+                        <span class="text-gray-500 dark:text-gray-400">Calories burned:</span>
+                        <p>${ride.calories}</p>
                     </div>
                 `;
                 
@@ -807,6 +866,21 @@
             utterance.pitch = 1.0;
             
             speechSynth.speak(utterance);
+        }
+        
+        // Toggle voice guidance
+        function toggleVoice() {
+            voiceEnabled = !voiceEnabled;
+            
+            if (voiceEnabled) {
+                voiceBtn.classList.add('active');
+                voiceGuidanceCheckbox.checked = true;
+                speak("Voice guidance enabled");
+            } else {
+                voiceBtn.classList.remove('active');
+                voiceGuidanceCheckbox.checked = false;
+                speechSynth.cancel();
+            }
         }
         
         // Event listeners
@@ -836,16 +910,22 @@
         
         themeToggle.addEventListener('change', function() {
             if (this.checked) {
-                document.documentElement.classList.add('dark');
-                localStorage.theme = 'dark';
+                enableDarkMode();
             } else {
-                document.documentElement.classList.remove('dark');
-                localStorage.theme = 'light';
+                enableLightMode();
             }
         });
         
+        voiceBtn.addEventListener('click', toggleVoice);
+        
         voiceGuidanceCheckbox.addEventListener('change', function() {
             voiceEnabled = this.checked;
+            if (voiceEnabled) {
+                voiceBtn.classList.add('active');
+            } else {
+                voiceBtn.classList.remove('active');
+                speechSynth.cancel();
+            }
         });
         
         voiceVolumeSlider.addEventListener('input', function() {
