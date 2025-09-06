@@ -21,56 +21,33 @@ function showPage(page) {
   if(page==="history") loadHistory();
   if(page==="stats") loadStats();
 }
-
-
 let paused = false;
 let pauseTime = 0;
 let totalPaused = 0;
 
-// Start Ride
-function startRide() {
-  if (!navigator.geolocation) {
-    alert("GPS not supported, manual mode only.");
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(()=>{}, ()=>{alert("Enable location for GPS tracking!");});
-  rideActive = true;
-  paused = false;
-  totalPaused = 0;
-  totalDistance = 0; prevPos = null; maxSpeed=0; elevationGain=0; speeds=[];
-  routeLine.setLatLngs([]); if(marker) map.removeLayer(marker);
-  startTime = Date.now();
-  timerInterval = setInterval(updateTime,1000);
-  watchId = navigator.geolocation.watchPosition(handlePos, handleError, {enableHighAccuracy:true,maximumAge:1000,timeout:5000});
-  document.getElementById("ride-btn").innerText="STARTED";
-  document.getElementById("pauseBtn").classList.remove("hidden");
-  document.getElementById("endBtn").classList.remove("hidden");
-  speak("Ride started");
-}
-
-// Pause Ride
+// Pause the ride
 function pauseRide() {
   if (!rideActive || paused) return;
   paused = true;
   pauseTime = Date.now();
   clearInterval(timerInterval);
   navigator.geolocation.clearWatch(watchId);
-  document.getElementById("pauseBtn").innerText = "RESUME";
+  document.getElementById("ride-btn").innerText = "RESUME";
   speak("Ride paused");
 }
 
-// Resume Ride
+// Resume the ride
 function resumeRide() {
   if (!rideActive || !paused) return;
   paused = false;
   totalPaused += Date.now() - pauseTime;
   timerInterval = setInterval(updateTime, 1000);
   watchId = navigator.geolocation.watchPosition(handlePos, handleError, {enableHighAccuracy:true,maximumAge:1000,timeout:5000});
-  document.getElementById("pauseBtn").innerText = "⏸";
+  document.getElementById("ride-btn").innerText = "STOP";
   speak("Ride resumed");
 }
 
-// End Ride
+// End the ride
 function endRide() {
   if (!rideActive) return;
   rideActive = false;
@@ -78,18 +55,41 @@ function endRide() {
   clearInterval(timerInterval);
   navigator.geolocation.clearWatch(watchId);
   saveRide();
-  document.getElementById("ride-btn").innerText="START";
-  document.getElementById("pauseBtn").classList.add("hidden");
-  document.getElementById("endBtn").classList.add("hidden");
-  document.getElementById("pauseBtn").innerText = "⏸";
+  document.getElementById("ride-btn").innerText = "START";
   speak("Ride ended");
 }
-
-// Pause/Resume toggle for button
-function togglePause() {
-  if (!rideActive) return;
-  if (!paused) pauseRide();
-  else resumeRide();
+// Ride controls
+function toggleRide() {
+  if (!rideActive) {
+    startRide();
+  } else if (!paused) {
+    pauseRide();
+  } else {
+    resumeRide();
+  }
+}
+function startRide() {
+  if (!navigator.geolocation) {
+    alert("GPS not supported, manual mode only.");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(()=>{}, ()=>{alert("Enable location for GPS tracking!");});
+  rideActive = true;
+  totalDistance = 0; prevPos = null; maxSpeed=0; elevationGain=0; speeds=[];
+  routeLine.setLatLngs([]); if(marker) map.removeLayer(marker);
+  startTime = Date.now();
+  timerInterval = setInterval(updateTime,1000);
+  watchId = navigator.geolocation.watchPosition(handlePos, handleError, {enableHighAccuracy:true,maximumAge:1000,timeout:5000});
+  document.getElementById("ride-btn").innerText="STOP";
+  speak("Ride started");
+}
+function stopRide() {
+  rideActive = false;
+  clearInterval(timerInterval);
+  navigator.geolocation.clearWatch(watchId);
+  saveRide();
+  document.getElementById("ride-btn").innerText="START";
+  speak("Ride stopped");
 }
 
 // Handle GPS position
@@ -133,10 +133,10 @@ function handleError() {
 
 // Timer
 function updateTime() {
-  let elapsed = Math.floor((Date.now() - startTime - totalPaused) / 1000);
-  let min = String(Math.floor(elapsed / 60)).padStart(2, "0");
-  let sec = String(elapsed % 60).padStart(2, "0");
-  document.getElementById("time").innerText = `${min}:${sec}`;
+  let elapsed = Math.floor((Date.now()-startTime)/1000);
+  let min = String(Math.floor(elapsed/60)).padStart(2,"0");
+  let sec = String(elapsed%60).padStart(2,"0");
+  document.getElementById("time").innerText=`${min}:${sec}`;
 }
 
 // Save & Load
@@ -177,30 +177,3 @@ function speak(txt){ if(synth) synth.speak(new SpeechSynthesisUtterance(txt)); }
 
 // Init
 showPage("home");
-
-// PWA Install
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  document.getElementById("installBtn").classList.remove("hidden");
-}
-);
-function installApp() {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then((choiceResult) => {
-      if (choiceResult.outcome === 'accepted') {
-        console.log('User accepted the install prompt');
-      } else {
-        console.log('User dismissed the install prompt');
-      }
-      deferredPrompt = null;
-      document.getElementById("installBtn").classList.add("hidden");
-    });
-    }
-    }
-    // Register service worker
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js");
-    }
