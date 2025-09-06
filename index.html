@@ -1,232 +1,85 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="bg-gray-900 text-white">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#0ea5e9" />
-  <link rel="manifest" href="manifest.json" />
-  <title>RideFlow — Cycling App</title>
-
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RideFlow Cycling App</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#111827" />
   <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    crossorigin=""/>
-
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    /* small fallback + signal bullets */
-    #map { height: 320px; border-radius: 12px; overflow: hidden; }
-    .signal-bullet { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px; }
-    /* big metric styles */
-    .big-metric { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.25rem; }
-    .big-value { font-weight:800; letter-spacing:.02em; }
-    .tab-active { background: rgba(255,255,255,0.08); }
+    #map { height: 300px; } /* responsive map area */
   </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen">
-
-  <!-- Header / Nav -->
-  <header class="w-full bg-slate-800/50 backdrop-blur sticky top-0 z-30 border-b border-white/6">
-    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <svg class="w-10 h-10 rounded-md bg-slate-700 p-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="#0ea5e9"/><text x="12" y="16" font-size="12" text-anchor="middle" fill="#0b1220">🚴</text></svg>
-        <div>
-          <div class="font-bold text-lg">RideFlow</div>
-          <div id="modeLabel" class="text-xs opacity-70">Detecting…</div>
-        </div>
-      </div>
-
-      <nav class="flex gap-2">
-        <button id="navHome" class="px-3 py-2 rounded-lg text-sm tab-active">Home</button>
-        <button id="navHistory" class="px-3 py-2 rounded-lg text-sm">History</button>
-        <button id="navStats" class="px-3 py-2 rounded-lg text-sm">Stats</button>
-        <button id="navSettings" class="px-3 py-2 rounded-lg text-sm">Settings</button>
-      </nav>
-    </div>
+<body class="flex flex-col min-h-screen">
+  <!-- Header Navigation -->
+  <header class="bg-gray-800 shadow-md">
+    <nav class="flex justify-around py-3 text-sm font-medium">
+      <button onclick="showPage('home')" id="nav-home" class="text-blue-400">Home</button>
+      <button onclick="showPage('history')" id="nav-history">History</button>
+      <button onclick="showPage('stats')" id="nav-stats">Stats</button>
+      <button onclick="showPage('settings')" id="nav-settings">Settings</button>
+    </nav>
   </header>
 
-  <!-- Main content container -->
-  <main class="max-w-4xl mx-auto p-4 space-y-4">
-
-    <!-- HOME SECTION (default visible) -->
-    <section id="homeSection" class="space-y-4">
-      <div class="bg-slate-800/50 rounded-2xl p-4 border border-white/6">
-        <div class="flex items-start justify-between gap-4">
-          <!-- Map + responsive: map on left on md+, stacked on mobile -->
-          <div class="flex-1">
-            <div id="map" class="bg-white/5 text-xs flex items-center justify-center">Map loading…</div>
-          </div>
-
-          <!-- small stats & controls (on small screens stacked under map via md:flex-col) -->
-          <aside class="w-full md:w-80 mt-3 md:mt-0 flex-shrink-0">
-            <div class="grid grid-cols-3 gap-2 mb-3 text-center">
-              <div class="p-3 rounded-xl bg-white/5">
-                <div class="text-sm opacity-70">Distance</div>
-                <div id="statDistance" class="text-xl font-bold">0.00</div>
-                <div class="text-xs opacity-60">km</div>
-              </div>
-              <div class="p-3 rounded-xl bg-white/5">
-                <div class="text-sm opacity-70">Duration</div>
-                <div id="statDuration" class="text-xl font-bold">00:00:00</div>
-                <div class="text-xs opacity-60">time</div>
-              </div>
-              <div class="p-3 rounded-xl bg-white/5">
-                <div class="text-sm opacity-70">Elevation</div>
-                <div id="statElevation" class="text-xl font-bold">0</div>
-                <div class="text-xs opacity-60">m ↑</div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-3 gap-2 mb-3 text-center">
-              <div class="p-2 rounded-xl bg-white/5">
-                <div class="text-xs opacity-80">Current</div>
-                <div id="statSpeedCur" class="text-lg font-bold">0.0</div>
-                <div class="text-xs opacity-60">km/h</div>
-              </div>
-              <div class="p-2 rounded-xl bg-white/5">
-                <div class="text-xs opacity-80">Average</div>
-                <div id="statSpeedAvg" class="text-lg font-bold">0.0</div>
-                <div class="text-xs opacity-60">km/h</div>
-              </div>
-              <div class="p-2 rounded-xl bg-white/5">
-                <div class="text-xs opacity-80">Max</div>
-                <div id="statSpeedMax" class="text-lg font-bold">0.0</div>
-                <div class="text-xs opacity-60">km/h</div>
-              </div>
-            </div>
-
-            <div class="mb-2 text-xs opacity-80 flex items-center justify-between">
-              <div>
-                <div>GPS: <span id="gpsSignalText">-</span></div>
-                <div id="gpsSignalBullets" class="mt-1"></div>
-              </div>
-              <div class="text-right">
-                <div id="status" class="text-sm text-yellow-300">Not started</div>
-              </div>
-            </div>
-
-            <div class="flex gap-2">
-              <button id="startBtn" class="flex-1 py-2 rounded-2xl bg-cyan-500 text-slate-900 font-semibold">Start</button>
-              <button id="pauseBtn" class="flex-1 py-2 rounded-2xl bg-white/10">Pause</button>
-              <button id="resumeBtn" class="flex-1 py-2 rounded-2xl bg-white/10">Resume</button>
-              <button id="stopBtn" class="flex-1 py-2 rounded-2xl bg-rose-500 text-slate-900">Stop</button>
-            </div>
-          </aside>
+  <!-- Pages -->
+  <main class="flex-1">
+    <!-- Home (Map + Controls) -->
+    <section id="page-home" class="h-full w-full">
+      <div id="map" class="w-full"></div>
+      <div class="grid grid-cols-2 gap-4 p-4">
+        <div class="bg-gray-800 rounded-lg p-4 text-center">
+          <h3 class="text-sm text-gray-400">Time</h3>
+          <p id="time" class="text-2xl font-bold">00:00</p>
         </div>
+        <div class="bg-gray-800 rounded-lg p-4 text-center">
+          <h3 class="text-sm text-gray-400">Distance (km)</h3>
+          <p id="distance" class="text-2xl font-bold">0.00</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 text-center col-span-2">
+          <h3 class="text-sm text-gray-400">Speed (km/h)</h3>
+          <p id="speed" class="text-lg">0.0 cur | 0.0 avg | 0.0 max</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 text-center">
+          <h3 class="text-sm text-gray-400">Elevation (m)</h3>
+          <p id="elevation" class="text-2xl font-bold">0</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 text-center">
+          <h3 class="text-sm text-gray-400">GPS Signal</h3>
+          <p id="gps-signal" class="text-2xl font-bold text-green-400">Waiting…</p>
+        </div>
+      </div>
+      <div class="flex justify-center my-6">
+        <button id="ride-btn" onclick="toggleRide()" class="rounded-full bg-blue-600 w-20 h-20 text-white text-lg font-bold shadow-lg">START</button>
       </div>
     </section>
 
-    <!-- HISTORY SECTION -->
-    <section id="historySection" class="hidden">
-      <div class="bg-slate-800/40 rounded-2xl p-4 border border-white/5">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="font-semibold">Ride History</h2>
-          <div class="flex gap-2">
-            <button id="exportBtn" class="px-3 py-1 rounded bg-white/10">Export JSON</button>
-            <button id="clearBtn" class="px-3 py-1 rounded bg-rose-600 text-slate-900">Clear</button>
-          </div>
-        </div>
-        <div id="historyList" class="space-y-2 max-h-72 overflow-auto text-xs"></div>
-      </div>
+    <!-- History -->
+    <section id="page-history" class="hidden p-4">
+      <h2 class="text-xl font-bold mb-4">Ride History</h2>
+      <ul id="ride-history" class="space-y-2"></ul>
     </section>
 
-    <!-- STATS SECTION (individual display tabs) -->
-    <section id="statsSection" class="hidden">
-      <div class="bg-slate-800/40 rounded-2xl p-4 border border-white/5">
-        <h2 class="font-semibold mb-3">Stats — big displays</h2>
-
-        <!-- sub-tabs -->
-        <div class="flex gap-2 mb-4 flex-wrap">
-          <button data-metric="distance" class="metric-tab px-3 py-2 rounded-md text-sm tab-active">Distance</button>
-          <button data-metric="time" class="metric-tab px-3 py-2 rounded-md text-sm">Time</button>
-          <button data-metric="speeds" class="metric-tab px-3 py-2 rounded-md text-sm">Speeds</button>
-          <button data-metric="elevation" class="metric-tab px-3 py-2 rounded-md text-sm">Elevation</button>
-        </div>
-
-        <!-- large metric area -->
-        <div id="bigMetric" class="bg-white/5 rounded-xl p-6 min-h-[160px] flex items-center justify-center">
-          <!-- Distance view -->
-          <div id="metric-distance" class="big-metric w-full text-center">
-            <div class="text-sm opacity-70">Total Distance</div>
-            <div id="bigDistance" class="big-value text-6xl md:text-7xl">0.00</div>
-            <div class="text-sm opacity-60">km</div>
-          </div>
-
-          <!-- Time view -->
-          <div id="metric-time" class="big-metric w-full text-center hidden">
-            <div class="text-sm opacity-70">Elapsed Time</div>
-            <div id="bigTime" class="big-value text-6xl md:text-7xl">00:00:00</div>
-            <div class="text-sm opacity-60">&nbsp;</div>
-          </div>
-
-          <!-- Speeds view -->
-          <div id="metric-speeds" class="big-metric w-full text-center hidden">
-            <div class="grid grid-cols-3 gap-4 w-full">
-              <div>
-                <div class="text-sm opacity-70">Current</div>
-                <div id="bigCurSpeed" class="big-value text-4xl">0.0</div>
-                <div class="text-xs opacity-60">km/h</div>
-              </div>
-              <div>
-                <div class="text-sm opacity-70">Average</div>
-                <div id="bigAvgSpeed" class="big-value text-4xl">0.0</div>
-                <div class="text-xs opacity-60">km/h</div>
-              </div>
-              <div>
-                <div class="text-sm opacity-70">Max</div>
-                <div id="bigMaxSpeed" class="big-value text-4xl">0.0</div>
-                <div class="text-xs opacity-60">km/h</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Elevation view -->
-          <div id="metric-elevation" class="big-metric w-full text-center hidden">
-            <div class="text-sm opacity-70">Elevation Gain</div>
-            <div id="bigElevation" class="big-value text-6xl md:text-7xl">0</div>
-            <div class="text-sm opacity-60">m</div>
-          </div>
-        </div>
-      </div>
+    <!-- Stats -->
+    <section id="page-stats" class="hidden p-4">
+      <h2 class="text-xl font-bold mb-4">Lifetime Stats</h2>
+      <p id="lifetime-stats">Loading...</p>
     </section>
 
-    <!-- SETTINGS SECTION -->
-    <section id="settingsSection" class="hidden">
-      <div class="bg-slate-800/40 rounded-2xl p-4 border border-white/5">
-        <h2 class="font-semibold mb-3">Settings</h2>
-        <div class="grid gap-3">
-          <label class="text-sm">
-            Weight (kg) — used for calories
-            <input id="userWeight" type="number" min="30" max="200" value="70" class="mt-1 w-full px-3 py-2 rounded bg-white/5 outline-none">
-          </label>
-          <label class="flex items-center gap-2 text-sm">
-            <input id="themeSwitch" type="checkbox" class="accent-cyan-400">
-            Use Light Mode
-          </label>
-          <div class="flex gap-2">
-            <button id="downloadAllBtn" class="px-3 py-2 rounded bg-cyan-500 text-slate-900">Download All GPX</button>
-            <button id="clearAllBtn" class="px-3 py-2 rounded bg-rose-600 text-slate-900">Clear All</button>
-          </div>
-        </div>
-      </div>
+    <!-- Settings -->
+    <section id="page-settings" class="hidden p-4">
+      <h2 class="text-xl font-bold mb-4">Settings</h2>
+      <label class="block mb-2">Weight (kg): 
+        <input id="weight" type="number" class="p-2 bg-gray-700 rounded w-24" value="70">
+      </label>
+      <button onclick="clearHistory()" class="mt-4 px-4 py-2 bg-red-600 rounded">Clear History</button>
     </section>
-
   </main>
 
   <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-
-  <!-- App script -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="app.js"></script>
-
-  <script>
-    // register PWA service worker if present
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js').catch(console.error);
-      });
-    }
-  </script>
 </body>
 </html>
