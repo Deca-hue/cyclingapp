@@ -76,14 +76,23 @@
         <input id="weight" type="number" class="p-2 bg-gray-700 rounded w-24" value="70">
       </label>
       <button onclick="clearHistory()" class="mt-4 px-4 py-2 bg-red-600 rounded">Clear History</button>
-<button id="install-btn" class="fixed bottom-6 right-6 bg-blue-600 text-white px-4 py-2 rounded shadow-lg z-50 hidden">
-  Download App
-</button>
+
     </section>
   </main>
-
+  <button id="install-btn" class="fixed bottom-6 right-6 bg-blue-600 text-white px-4 py-2 rounded shadow-lg z-50 hidden">
+  Download App
+</button>
+    <footer class="bg-gray-800 text-center text-sm p-2">
+        &copy; 2024 RideFlow
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').catch(console.error);
+      });
+    }
+  </script>
 </body>
 </html>
