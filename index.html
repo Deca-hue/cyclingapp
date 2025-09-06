@@ -53,6 +53,7 @@
       </div>
       <div class="flex justify-center my-6">
         <button id="ride-btn" onclick="toggleRide()" class="rounded-full bg-blue-600 w-20 h-20 text-white text-lg font-bold shadow-lg">START</button>
+          <button id="end-btn" onclick="endRide()" class="ml-4 rounded-full bg-red-600 w-20 h-20 text-white text-lg font-bold shadow-lg hidden">END</button>
       </div>
     </section>
 
@@ -75,7 +76,6 @@
         <input id="weight" type="number" class="p-2 bg-gray-700 rounded w-24" value="70">
       </label>
       <button onclick="clearHistory()" class="mt-4 px-4 py-2 bg-red-600 rounded">Clear History</button>
-      <!-- Add this where you want the install prompt button to appear -->
 <button id="install-btn" class="fixed bottom-6 right-6 bg-blue-600 text-white px-4 py-2 rounded shadow-lg z-50 hidden">
   Download App
 </button>
