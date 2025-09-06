@@ -1,79 +1,88 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-gray-900 text-white">
+<html lang="en" class="bg-gray-900 text-white">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RideFlow Cycling App</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-
-  <!-- PWA Manifest -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#111827">
+  <meta name="theme-color" content="#111827" />
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map { height: 300px; } /* responsive map area */
+  </style>
 </head>
-<body class="flex flex-col h-full">
-
+<body class="flex flex-col min-h-screen">
   <!-- Header Navigation -->
-  <header class="bg-gray-800 flex justify-around py-3 shadow-lg">
-    <button id="nav-home" class="px-3">Home</button>
-    <button id="nav-history" class="px-3">History</button>
-    <button id="nav-stats" class="px-3">Stats</button>
-    <button id="nav-settings" class="px-3">Settings</button>
+  <header class="bg-gray-800 shadow-md">
+    <nav class="flex justify-around py-3 text-sm font-medium">
+      <button onclick="showPage('home')" id="nav-home" class="text-blue-400">Home</button>
+      <button onclick="showPage('history')" id="nav-history">History</button>
+      <button onclick="showPage('stats')" id="nav-stats">Stats</button>
+      <button onclick="showPage('settings')" id="nav-settings">Settings</button>
+    </nav>
   </header>
 
-  <!-- Main Content -->
-  <main id="app-content" class="flex-1 overflow-y-auto">
-    <!-- Map -->
-    <div id="map" class="w-full h-64"></div>
+  <!-- Pages -->
+  <main class="flex-1">
+    <!-- Home (Map + Controls) -->
+    <section id="page-home" class="h-full w-full">
+      <div id="map" class="w-full"></div>
+      <div class="grid grid-cols-2 gap-4 p-4">
+        <div class="bg-gray-800 rounded-lg p-4 text-center">
+          <h3 class="text-sm text-gray-400">Time</h3>
+          <p id="time" class="text-2xl font-bold">00:00</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 text-center">
+          <h3 class="text-sm text-gray-400">Distance (km)</h3>
+          <p id="distance" class="text-2xl font-bold">0.00</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 text-center col-span-2">
+          <h3 class="text-sm text-gray-400">Speed (km/h)</h3>
+          <p id="speed" class="text-lg">0.0 cur | 0.0 avg | 0.0 max</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 text-center">
+          <h3 class="text-sm text-gray-400">Elevation (m)</h3>
+          <p id="elevation" class="text-2xl font-bold">0</p>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-4 text-center">
+          <h3 class="text-sm text-gray-400">GPS Signal</h3>
+          <p id="gps-signal" class="text-2xl font-bold text-green-400">Waiting…</p>
+        </div>
+      </div>
+      <div class="flex justify-center my-6">
+        <button id="ride-btn" onclick="toggleRide()" class="rounded-full bg-blue-600 w-20 h-20 text-white text-lg font-bold shadow-lg">START</button>
+        <button id="pauseBtn" onclick="togglePause()" class="bg-yellow-500 rounded-full p-5 hidden">⏸</button>
+        <button id="endBtn" onclick="endRide()" class="bg-red-600 rounded-full p-5 hidden">⏹</button>
+      </div>
+    </section>
 
-    <!-- Stats Display -->
-    <div class="grid grid-cols-2 gap-4 p-4 text-center">
-      <div class="bg-gray-800 rounded-lg p-4">
-        <p class="text-sm">Time</p>
-        <p id="time" class="text-xl font-bold">00:00</p>
-      </div>
-      <div class="bg-gray-800 rounded-lg p-4">
-        <p class="text-sm">Distance</p>
-        <p id="distance" class="text-xl font-bold">0.0 km</p>
-      </div>
-      <div class="bg-gray-800 rounded-lg p-4">
-        <p class="text-sm">Speed</p>
-        <p id="speed" class="text-xl font-bold">0 km/h</p>
-      </div>
-      <div class="bg-gray-800 rounded-lg p-4">
-        <p class="text-sm">Avg Speed</p>
-        <p id="avgSpeed" class="text-xl font-bold">0 km/h</p>
-      </div>
-      <div class="bg-gray-800 rounded-lg p-4">
-        <p class="text-sm">Max Speed</p>
-        <p id="maxSpeed" class="text-xl font-bold">0 km/h</p>
-      </div>
-      <div class="bg-gray-800 rounded-lg p-4">
-        <p class="text-sm">Elevation</p>
-        <p id="elevation" class="text-xl font-bold">0 m</p>
-      </div>
-      <div class="bg-gray-800 rounded-lg p-4 col-span-2">
-        <p class="text-sm">GPS Signal</p>
-        <p id="gps" class="text-xl font-bold">Waiting...</p>
-      </div>
-    </div>
+    <!-- History -->
+    <section id="page-history" class="hidden p-4">
+      <h2 class="text-xl font-bold mb-4">Ride History</h2>
+      <ul id="ride-history" class="space-y-2"></ul>
+    </section>
+
+    <!-- Stats -->
+    <section id="page-stats" class="hidden p-4">
+      <h2 class="text-xl font-bold mb-4">Lifetime Stats</h2>
+      <p id="lifetime-stats">Loading...</p>
+    </section>
+
+    <!-- Settings -->
+    <section id="page-settings" class="hidden p-4">
+      <h2 class="text-xl font-bold mb-4">Settings</h2>
+      <label class="block mb-2">Weight (kg): 
+        <input id="weight" type="number" class="p-2 bg-gray-700 rounded w-24" value="70">
+      </label>
+      <button onclick="clearHistory()" class="mt-4 px-4 py-2 bg-red-600 rounded">Clear History</button>
+       <button onclick="installApp()" id="installBtn" class="bg-blue-600 px-4 py-2 rounded-lg hidden">📥 Download App</button>
+    </section>
   </main>
 
-  <!-- Ride Controls -->
-  <footer class="bg-gray-800 flex justify-around py-4 shadow-lg">
-    <button id="startBtn" class="bg-green-600 px-4 py-2 rounded-full">Start</button>
-    <button id="pauseBtn" class="bg-yellow-600 px-4 py-2 rounded-full">Pause</button>
-    <button id="resumeBtn" class="bg-blue-600 px-4 py-2 rounded-full">Resume</button>
-    <button id="endBtn" class="bg-red-600 px-4 py-2 rounded-full">End Ride</button>
-    <button id="installBtn" class="bg-purple-600 px-4 py-2 rounded-full">Download App</button>
-  </footer>
-
-  <!-- Scripts -->
+  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="app.js"></script>
-  <script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js");
-  }
-</script>
 </body>
 </html>
