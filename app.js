@@ -1,673 +1,493 @@
- // App state
-        let isTracking = false;
-        let isPaused = false;
-        let startTime = null;
-        let pausedTime = 0;
-        let timerInterval = null;
-        let totalDistance = 0;
-        let currentSpeed = 0;
-        let maxSpeed = 0;
-        let lastPosition = null;
-        let positionHistory = [];
-        let watchId = null;
-        let voiceEnabled = false;
-        let voiceVolume = 0.7;
-        let speechSynth = window.speechSynthesis;
-        let currentTheme = 'light';
-        
-        // DOM Elements
-        const startBtn = document.getElementById('start-btn');
-        const pauseBtn = document.getElementById('pause-btn');
-        const endBtn = document.getElementById('end-btn');
-        const distanceEl = document.getElementById('distance');
-        const durationEl = document.getElementById('duration');
-        const speedEl = document.getElementById('speed');
-        const caloriesEl = document.getElementById('calories');
-        const avgSpeedEl = document.getElementById('avg-speed');
-        const maxSpeedEl = document.getElementById('max-speed');
-        const paceEl = document.getElementById('pace');
-        const elevationEl = document.getElementById('elevation');
-        const gpsStatusEl = document.getElementById('gps-status');
-        const settingsBtn = document.getElementById('settings-btn');
-        const settingsPanel = document.getElementById('settings-panel');
-        const deviceTypeSelect = document.getElementById('device-type');
-        const gpsModeSelect = document.getElementById('gps-mode');
-        const historyBtn = document.getElementById('history-btn');
-        const historyPanel = document.getElementById('history-panel');
-        const closeHistoryBtn = document.getElementById('close-history');
-        const historyList = document.getElementById('history-list');
-        const themeToggle = document.getElementById('theme-toggle');
-        const voiceBtn = document.getElementById('voice-btn');
-        const voiceGuidanceCheckbox = document.getElementById('voice-guidance');
-        const voiceVolumeSlider = document.getElementById('voice-volume');
-        const testVoiceBtn = document.getElementById('test-voice');
-        const mapContainer = document.getElementById('map-container');
-        const mapPlaceholder = document.getElementById('map-placeholder');
-        
-        // Check if device is a smartwatch (simplified)
-        function checkIfSmartwatch() {
-            return window.screen.width < 400 || window.screen.height < 400 || 
-                   navigator.userAgent.includes('Watch') || 
-                   deviceTypeSelect.value === 'watch';
-        }
-        
-        // Apply device-specific optimizations
-        function applyDeviceOptimizations() {
-            if (checkIfSmartwatch()) {
-                document.body.classList.add('watch-optimized');
-                document.body.classList.remove('mobile-optimized');
-                // Simplify UI for watch
-                document.querySelectorAll('p, span, button').forEach(el => {
-                    el.classList.add('text-sm');
-                });
-            } else {
-                document.body.classList.add('mobile-optimized');
-                document.body.classList.remove('watch-optimized');
-            }
-        }
-        
-        // Initialize the app
-        function initApp() {
-            applyDeviceOptimizations();
-            loadRideHistory();
-            
-            // Check if Geolocation is available
-            if (!navigator.geolocation) {
-                gpsStatusEl.textContent = 'GPS: Not Supported';
-                startBtn.disabled = true;
-                return;
-            }
-            
-            // Try to get current position to test GPS
-            navigator.geolocation.getCurrentPosition(
-                () => gpsStatusEl.textContent = 'GPS: Ready',
-                () => gpsStatusEl.textContent = 'GPS: Error'
-            );
-            
-            // Check if speech synthesis is supported
-            if (!speechSynth) {
-                voiceGuidanceCheckbox.disabled = true;
-                voiceBtn.disabled = true;
-                voiceGuidanceCheckbox.parentElement.innerHTML += '<span class="text-red-500 text-sm"> (Not supported)</span>';
-            }
-            
-            // Set up theme from localStorage or system preference
-            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                enableDarkMode();
-            } else {
-                enableLightMode();
-            }
-        }
-        
-        // Enable dark mode
-        function enableDarkMode() {
-            document.documentElement.classList.add('dark');
-            themeToggle.checked = true;
-            currentTheme = 'dark';
-            localStorage.theme = 'dark';
-        }
-        
-        // Enable light mode
-        function enableLightMode() {
-            document.documentElement.classList.remove('dark');
-            themeToggle.checked = false;
-            currentTheme = 'light';
-            localStorage.theme = 'light';
-        }
-        
-        // Calculate distance between two coordinates (Haversine formula)
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Earth's radius in km
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = 
-                Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
-        }
-        
-        // Format time
-        function formatTime(ms) {
-            const totalSeconds = Math.floor(ms / 1000);
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
-            
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        }
-        
-        // Format date for history
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        }
-        
-        // Calculate calories (simplified)
-        function calculateCalories(distance, time) {
-            // Rough estimate: 30 calories per km
-            return Math.round(distance * 30);
-        }
-        
-        // Update stats display
-        function updateStats() {
-            const currentTime = new Date();
-            const elapsedTime = isPaused ? pausedTime : currentTime - startTime - pausedTime;
-            
-            distanceEl.textContent = totalDistance.toFixed(2);
-            durationEl.textContent = formatTime(elapsedTime);
-            speedEl.textContent = currentSpeed.toFixed(1);
-            caloriesEl.textContent = calculateCalories(totalDistance, elapsedTime);
-            
-            // Calculate average speed
-            const hours = elapsedTime / 3600000; // convert ms to hours
-            const avgSpeed = hours > 0 ? totalDistance / hours : 0;
-            avgSpeedEl.textContent = avgSpeed.toFixed(1);
-            
-            // Update max speed
-            maxSpeedEl.textContent = maxSpeed.toFixed(1);
-            
-            // Calculate pace (min/km)
-            const pace = totalDistance > 0 ? (elapsedTime / 1000) / 60 / totalDistance : 0;
-            const paceMin = Math.floor(pace);
-            const paceSec = Math.floor((pace - paceMin) * 60);
-            paceEl.textContent = `${paceMin}:${paceSec.toString().padStart(2, '0')}`;
-        }
-        
-        // Start tracking
-        function startTracking() {
-            if (isTracking && !isPaused) return;
-            
-            // If resuming from pause
-            if (isPaused) {
-                isPaused = false;
-                startTime = new Date(new Date() - pausedTime);
-                pauseBtn.innerHTML = '<i class="fas fa-pause mr-2"></i> Pause';
-                pauseBtn.classList.remove('bg-green-500');
-                pauseBtn.classList.add('bg-yellow-500');
-                
-                if (voiceEnabled) {
-                    speak("Ride resumed");
-                }
-            } else {
-                // Starting fresh ride
-                isTracking = true;
-                startTime = new Date();
-                totalDistance = 0;
-                maxSpeed = 0;
-                positionHistory = [];
-                pausedTime = 0;
-                
-                // UI updates
-                startBtn.disabled = true;
-                pauseBtn.disabled = false;
-                endBtn.disabled = false;
-                startBtn.classList.remove('bg-secondary-light', 'dark:bg-secondary-dark');
-                startBtn.classList.add('bg-gray-400');
-                pauseBtn.classList.remove('opacity-50');
-                endBtn.classList.remove('opacity-50');
-                
-                if (voiceEnabled) {
-                    speak("Ride started");
-                }
-            }
-            
-            // Start timer
-            timerInterval = setInterval(updateStats, 1000);
-            
-            // Start GPS tracking with selected mode
-            const options = {
-                enableHighAccuracy: gpsModeSelect.value === 'high',
-                maximumAge: gpsModeSelect.value === 'low' ? 10000 : 5000,
-                timeout: gpsModeSelect.value === 'low' ? 10000 : 5000
-            };
-            
-            watchId = navigator.geolocation.watchPosition(
-                positionSuccess,
-                positionError,
-                options
-            );
-            
-            // Add recording animation to map container
-            mapContainer.classList.add('recording');
-        }
-        
-        // Pause tracking
-        function pauseTracking() {
-            if (!isTracking || isPaused) return;
-            
-            isPaused = true;
-            pausedTime = new Date() - startTime;
-            
-            // UI updates
-            pauseBtn.innerHTML = '<i class="fas fa-play mr-2"></i> Resume';
-            pauseBtn.classList.remove('bg-yellow-500');
-            pauseBtn.classList.add('bg-green-500');
-            
-            // Stop timer and GPS
-            clearInterval(timerInterval);
-            if (watchId !== null) {
-                navigator.geolocation.clearWatch(watchId);
-                watchId = null;
-            }
-            
-            // Remove recording animation
-            mapContainer.classList.remove('recording');
-            
-            if (voiceEnabled) {
-                speak("Ride paused");
-            }
-        }
-        
-        // End tracking and save ride
-        function endTracking() {
-            if (!isTracking) return;
-            
-            isTracking = false;
-            isPaused = false;
-            
-            // UI updates
-            startBtn.disabled = false;
-            pauseBtn.disabled = true;
-            endBtn.disabled = true;
-            startBtn.classList.add('bg-secondary-light', 'dark:bg-secondary-dark');
-            startBtn.classList.remove('bg-gray-400');
-            pauseBtn.classList.add('opacity-50');
-            endBtn.classList.add('opacity-50');
-            pauseBtn.innerHTML = '<i class="fas fa-pause mr-2"></i> Pause';
-            pauseBtn.classList.remove('bg-green-500');
-            pauseBtn.classList.add('bg-yellow-500');
-            
-            // Stop timer and GPS
-            clearInterval(timerInterval);
-            if (watchId !== null) {
-                navigator.geolocation.clearWatch(watchId);
-                watchId = null;
-            }
-            
-            // Remove recording animation
-            mapContainer.classList.remove('recording');
-            
-            // Save ride to history
-            saveRide();
-            
-            if (voiceEnabled) {
-                speak("Ride completed. Distance " + totalDistance.toFixed(1) + " kilometers");
-            }
-            
-            // Reset stats
-            totalDistance = 0;
-            currentSpeed = 0;
-            maxSpeed = 0;
-            updateStats();
-            
-            // Clear map
-            clearMap();
-        }
-        
-        // Handle successful position retrieval
-        function positionSuccess(position) {
-            const { latitude, longitude, accuracy, speed, altitude } = position.coords;
-            
-            // Update GPS status with accuracy info
-            let accuracyStatus = 'High';
-            let statusClass = 'gps-accuracy-high';
-            
-            if (accuracy > 50) {
-                accuracyStatus = 'Low';
-                statusClass = 'gps-accuracy-low';
-            } else if (accuracy > 20) {
-                accuracyStatus = 'Medium';
-                statusClass = 'gps-accuracy-medium';
-            }
-            
-            gpsStatusEl.innerHTML = `GPS: ${accuracyStatus} (${Math.round(accuracy)}m)`;
-            gpsStatusEl.className = 'text-xs px-2 py-1 rounded-full ' + statusClass;
-            
-            // Update current speed (convert m/s to km/h)
-            currentSpeed = speed !== null ? speed * 3.6 : 0;
-            
-            // Update max speed
-            if (currentSpeed > maxSpeed) {
-                maxSpeed = currentSpeed;
-            }
-            
-            // Calculate distance if we have a previous position
-            if (lastPosition) {
-                const distance = calculateDistance(
-                    lastPosition.latitude,
-                    lastPosition.longitude,
-                    latitude,
-                    longitude
-                );
-                
-                // Only add distance if it's reasonable (filter out GPS jumps)
-                if (distance < 0.5) { // Filter distances > 500m as likely GPS errors
-                    totalDistance += distance;
-                    
-                    // Auto-pause if enabled and speed is very low
-                    const autoPauseEnabled = document.getElementById('auto-pause').checked;
-                    if (autoPauseEnabled && 
-                        currentSpeed < 1 &&
-                         isTracking && !isPaused) {
-                        pauseTracking();
-                    }
-                }
-            }
-            
-            // Store current position
-            lastPosition = { latitude, longitude };
-            positionHistory.push({
-                lat: latitude,
-                lng: longitude,
-                timestamp: Date.now()
-            });
-            
-            // Update elevation if available
-            if (altitude !== null) {
-                elevationEl.textContent = Math.round(altitude);
-            }
-            
-            // Update map visualization
-            updateMapPosition(latitude, longitude);
-            
-            // Voice updates every kilometer
-            if (voiceEnabled && Math.floor(totalDistance) > Math.floor(totalDistance - calculateDistance(
-                lastPosition.latitude,
-                lastPosition.longitude,
-                latitude,
-                longitude
-            ))) {
-                speak(`You have cycled ${Math.floor(totalDistance)} kilometers`);
-            }
-        }
-        
-        // Handle position errors
-        function positionError(error) {
-            console.error('Geolocation error:', error);
-            let message = 'Unknown error';
-            
-            switch(error.code) {
-                case error.PERMISSION_DENIED:
-                    message = 'Permission denied';
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    message = 'Position unavailable';
-                    break;
-                case error.TIMEOUT:
-                    message = 'Request timeout';
-                    // For weak GPS devices, we might want to continue with last known position
-                    break;
-            }
-            
-            gpsStatusEl.textContent = `GPS: Error - ${message}`;
-            gpsStatusEl.className = 'text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full';
-        }
-        
-        // Update map position visualization
-       function updateMapPosition(lat, lng) {
-    // Hide placeholder after first position
-    if (mapPlaceholder.style.display !== 'none') {
-        mapPlaceholder.style.display = 'none';
+/* RideFlow — combined: map + gps + auto-pause + voice + tabs + responsive big-stats */
+(() => {
+  // --- UI refs (main) ---
+  const navHome = document.getElementById('navHome');
+  const navHistory = document.getElementById('navHistory');
+  const navStats = document.getElementById('navStats');
+  const navSettings = document.getElementById('navSettings');
+
+  const homeSection = document.getElementById('homeSection');
+  const historySection = document.getElementById('historySection');
+  const statsSection = document.getElementById('statsSection');
+  const settingsSection = document.getElementById('settingsSection');
+
+  const statusEl = document.getElementById('status');
+  const modeLabel = document.getElementById('modeLabel');
+  const gpsSignalText = document.getElementById('gpsSignalText');
+  const gpsSignalBullets = document.getElementById('gpsSignalBullets');
+
+  // small stat boxes
+  const statDistance = document.getElementById('statDistance');
+  const statDuration = document.getElementById('statDuration');
+  const statElevation = document.getElementById('statElevation');
+  const statSpeedCur = document.getElementById('statSpeedCur');
+  const statSpeedAvg = document.getElementById('statSpeedAvg');
+  const statSpeedMax = document.getElementById('statSpeedMax');
+
+  // big stats
+  const metricTabs = Array.from(document.querySelectorAll('.metric-tab'));
+  const metricPanels = {
+    distance: document.getElementById('metric-distance'),
+    time: document.getElementById('metric-time'),
+    speeds: document.getElementById('metric-speeds'),
+    elevation: document.getElementById('metric-elevation'),
+  };
+  const bigDistance = document.getElementById('bigDistance');
+  const bigTime = document.getElementById('bigTime');
+  const bigCurSpeed = document.getElementById('bigCurSpeed');
+  const bigAvgSpeed = document.getElementById('bigAvgSpeed');
+  const bigMaxSpeed = document.getElementById('bigMaxSpeed');
+  const bigElevation = document.getElementById('bigElevation');
+
+  // controls
+  const startBtn = document.getElementById('startBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const resumeBtn = document.getElementById('resumeBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const historyList = document.getElementById('historyList');
+  const exportBtn = document.getElementById('exportBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const userWeight = document.getElementById('userWeight');
+  const themeSwitch = document.getElementById('themeSwitch');
+  const downloadAllBtn = document.getElementById('downloadAllBtn');
+  const clearAllBtn = document.getElementById('clearAllBtn');
+
+  // --- Map init ---
+  const map = L.map('map', { zoomControl: true, attributionControl: false });
+  const osmTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+  try { map.setView([0,0], 2); } catch(e){}
+
+  // --- State ---
+  let watchId = null;
+  let recording = false;
+  let paused = false;
+  let startTime = null;
+  let elapsedMs = 0;
+  let distanceMeters = 0;
+  let lastPos = null;
+  let points = [];
+  let polyline = L.polyline([], { color: "#06b6d4", weight: 5 }).addTo(map);
+  let marker = null;
+  let maxSpeed = 0;
+  let elevationGain = 0;
+  let lastElevation = null;
+  let pausedAt = null;
+  let totalPausedMs = 0;
+  let lowSpeedSince = null;
+  let nextVoiceKm = 1;
+  const STORAGE_KEY = "rideflow_v2_history";
+
+  // --- Helpers ---
+  const speak = (text) => {
+    if ('speechSynthesis' in window) {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = navigator.language || 'en-US';
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
     }
+  };
 
-    // Convert lat/lng to pixel coordinates (simulated)
-    const x = 50 + (lng * 1000 % 90);
-    const y = 50 + (lat * 1000 % 90);
+  const toHMS = (ms) => {
+    const sec = Math.floor(ms/1000);
+    const h = String(Math.floor(sec/3600)).padStart(2,'0');
+    const m = String(Math.floor((sec%3600)/60)).padStart(2,'0');
+    const s = String(sec%60).padStart(2,'0');
+    return `${h}:${m}:${s}`;
+  };
 
-    // Draw a line from the last point to the new point
-    if (positionHistory.length > 1) {
-        const prev = positionHistory[positionHistory.length - 2];
-        const prevX = 50 + (prev.lng * 1000 % 90);
-        const prevY = 50 + (prev.lat * 1000 % 90);
+  const haversine = (a, b) => {
+    const R = 6371000;
+    const toRad = (d) => d * Math.PI/180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLon = toRad(b.lon - a.lon);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+    const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
 
-        const line = document.createElement('div');
-        line.className = 'route-line';
-        line.style.position = 'absolute';
-        line.style.left = `${prevX}%`;
-        line.style.top = `${prevY}%`;
-        line.style.width = '2px';
-        line.style.height = '2px';
-        line.style.background = '#2563eb';
-        line.style.borderRadius = '2px';
-        line.style.transform = `translate(-50%, -50%) scaleX(${Math.hypot(x - prevX, y - prevY) / 2}) rotate(${Math.atan2(y - prevY, x - prevX)}rad)`;
-        line.style.transformOrigin = '0 0';
-        mapContainer.appendChild(line);
+  function signalLevel(acc) {
+    if (acc == null) return 0;
+    if (acc <= 8) return 3;
+    if (acc <= 25) return 2;
+    return 1;
+  }
+  function renderSignal(acc) {
+    gpsSignalText.textContent = (acc == null ? "-" : `${Math.round(acc)} m`);
+    const level = acc == null ? 0 : signalLevel(acc);
+    gpsSignalBullets.innerHTML = "";
+    for (let i=1;i<=3;i++) {
+      const span = document.createElement("span");
+      span.className = "signal-bullet";
+      if (i <= level) {
+        span.style.background = (level===3? "#34d399" : level===2? "#fbbf24" : "#f87171");
+      } else {
+        span.style.background = "rgba(255,255,255,0.12)";
+      }
+      gpsSignalBullets.appendChild(span);
     }
-
-    // Create a new point for the path
-    const point = document.createElement('div');
-    point.className = 'path-point';
-    point.style.left = `${x}%`;
-    point.style.top = `${y}%`;
-    mapContainer.appendChild(point);
-}
-        
-        // Save ride to history
-        function saveRide() {
-            const ride = {
-                id: Date.now(),
-                date: new Date().toISOString(),
-                distance: totalDistance,
-                duration: new Date() - startTime - pausedTime,
-                avgSpeed: totalDistance / ((new Date() - startTime - pausedTime) / 3600000),
-                maxSpeed: maxSpeed,
-                calories: calculateCalories(totalDistance, new Date() - startTime - pausedTime),
-                route: positionHistory.slice() // Save the route
-            };
-            
-            // Get existing history or initialize empty array
-            const history = JSON.parse(localStorage.getItem('rideHistory') || '[]');
-            
-            // Add new ride to beginning of array
-            history.unshift(ride);
-            
-            // Keep only last 20 rides
-            if (history.length > 20) {
-                history.pop();
-            }
-            
-            // Save back to localStorage
-            localStorage.setItem('rideHistory', JSON.stringify(history));
-            
-            // Update history display
-            loadRideHistory();
-        }
-        
-        // Load ride history from storage
-        function loadRideHistory() {
-            const history = JSON.parse(localStorage.getItem('rideHistory') || '[]');
-            
-            if (history.length === 0) {
-                historyList.innerHTML = '<div class="text-center py-4 text-gray-500 dark:text-gray-400"><p>No ride history yet</p></div>';
-                return;
-            }
-            
-            historyList.innerHTML = '';
-            
-           history.forEach((ride, idx) => {
-    const rideDate = new Date(ride.date);
-    const rideElement = document.createElement('div');
-    rideElement.className = 'bg-gray-100 dark:bg-gray-800 p-3 rounded-lg relative';
-    rideElement.innerHTML = `
-        <button class="absolute top-2 right-2 text-red-500 hover:text-red-700 text-xs delete-ride-btn" data-idx="${idx}" title="Delete Ride">
-            <i class="fas fa-trash"></i>
-        </button>
-        <div class="flex justify-between items-start">
-            <div>
-                <h3 class="font-semibold">${formatDate(ride.date)}</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400">${formatTime(ride.duration)}</p>
-            </div>
-            <span class="bg-primary-light dark:bg-primary-dark text-white text-xs px-2 py-1 rounded-full">${ride.distance.toFixed(1)} km</span>
-        </div>
-        <div class="grid grid-cols-2 gap-2 mt-2 text-sm">
-            <div>
-                <span class="text-gray-500 dark:text-gray-400">Avg Speed:</span>
-                <p>${ride.avgSpeed.toFixed(1)} km/h</p>
-            </div>
-            <div>
-                <span class="text-gray-500 dark:text-gray-400">Max Speed:</span>
-                <p>${ride.maxSpeed.toFixed(1)} km/h</p>
-            </div>
-        </div>
-        <div class="mt-2 text-sm">
-            <span class="text-gray-500 dark:text-gray-400">Calories burned:</span>
-            <p>${ride.calories}</p>
-        </div>
-    `;
-        historyList.appendChild(rideElement);
-  });
-  //show route on history
-function showRouteOnMap(route) {
-    clearMap();
-    if (!route || route.length === 0) return;
-    mapPlaceholder.style.display = 'none';
-    for (let i = 0; i < route.length; i++) {
-        const lat = route[i].lat;
-        const lng = route[i].lng;
-        // Convert lat/lng to pixel coordinates (simulated)
-        const x = 50 + (lng * 1000 % 90);
-        const y = 50 + (lat * 1000 % 90);
-
-        // Draw line to next point
-        if (i > 0) {
-            const prev = route[i - 1];
-            const prevX = 50 + (prev.lng * 1000 % 90);
-            const prevY = 50 + (prev.lat * 1000 % 90);
-
-            const line = document.createElement('div');
-            line.className = 'route-line';
-            line.style.position = 'absolute';
-            line.style.left = `${prevX}%`;
-            line.style.top = `${prevY}%`;
-            line.style.width = '2px';
-            line.style.height = '2px';
-            line.style.background = '#2563eb';
-            line.style.borderRadius = '2px';
-            line.style.transform = `translate(-50%, -50%) scaleX(${Math.hypot(x - prevX, y - prevY) / 2}) rotate(${Math.atan2(y - prevY, x - prevX)}rad)`;
-            line.style.transformOrigin = '0 0';
-            mapContainer.appendChild(line);
-        }
-
-        // Draw point
-        const point = document.createElement('div');
-        point.className = 'path-point';
-        point.style.left = `${x}%`;
-        point.style.top = `${y}%`;
-        mapContainer.appendChild(point);
-    }
-}
-    // Add event listeners for delete buttons
-      document.querySelectorAll('.delete-ride-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-          e.stopPropagation();
-        const idx = parseInt(this.getAttribute('data-idx'));
-        deleteRide(idx);
-     });
-         });
-        }
-        // Delete ride from history
-        function deleteRide(idx) {
-    let history = JSON.parse(localStorage.getItem('rideHistory') || '[]');
-    history.splice(idx, 1);
-    localStorage.setItem('rideHistory', JSON.stringify(history));
-    loadRideHistory();
   }
 
-  //clear all rides from history
-       const clearHistoryBtn = document.getElementById('clear-history');
-        if (clearHistoryBtn) {
-          clearHistoryBtn.addEventListener('click', function() {
-               if (confirm('Are you sure you want to delete all ride history?')) {
-            localStorage.removeItem('rideHistory');
-            loadRideHistory();
-           }
+  const updateSmallUI = (curSpeed) => {
+    statDistance.textContent = (distanceMeters/1000).toFixed(2);
+    statDuration.textContent = toHMS(elapsedMs);
+    statElevation.textContent = Math.round(elevationGain);
+    statSpeedCur.textContent = (curSpeed || 0).toFixed(1);
+    const hours = elapsedMs / 3600000;
+    const avg = hours > 0 ? (distanceMeters/1000) / hours : 0;
+    statSpeedAvg.textContent = avg.toFixed(1);
+    statSpeedMax.textContent = maxSpeed.toFixed(1);
+  };
+
+  const updateBigUI = (curSpeed) => {
+    bigDistance.textContent = (distanceMeters/1000).toFixed(2);
+    bigTime.textContent = toHMS(elapsedMs);
+    bigElevation.textContent = Math.round(elevationGain);
+    bigCurSpeed.textContent = (curSpeed || 0).toFixed(1);
+    const hours = elapsedMs / 3600000;
+    const avg = hours > 0 ? (distanceMeters/1000) / hours : 0;
+    bigAvgSpeed.textContent = avg.toFixed(1);
+    bigMaxSpeed.textContent = maxSpeed.toFixed(1);
+  };
+
+  const setActiveNav = (activeBtn) => {
+    [navHome, navHistory, navStats, navSettings].forEach(b => b.classList.remove('tab-active'));
+    activeBtn.classList.add('tab-active');
+  };
+
+  const showSection = (section) => {
+    // hide all
+    [homeSection, historySection, statsSection, settingsSection].forEach(s => s.classList.add('hidden'));
+    // show chosen
+    section.classList.remove('hidden');
+    // fix map sizing when returning to home
+    if (section === homeSection) {
+      setTimeout(()=>{ try { map.invalidateSize(); if (polyline && polyline.getLatLngs().length) map.fitBounds(polyline.getBounds(), { padding:[40,40] }); } catch(e){} }, 220);
+    }
+  };
+
+  // metric tab switching
+  let currentMetric = 'distance';
+  const showMetric = (m) => {
+    currentMetric = m;
+    metricTabs.forEach(t => t.classList.remove('tab-active'));
+    metricTabs.filter(t=>t.dataset.metric===m).forEach(t=>t.classList.add('tab-active'));
+    Object.keys(metricPanels).forEach(k => {
+      metricPanels[k].classList.toggle('hidden', k !== m);
+    });
+    // update big UI immediately
+    updateBigUI();
+  };
+
+  // Attach nav handlers
+  navHome.addEventListener('click', ()=>{ setActiveNav(navHome); showSection(homeSection); });
+  navHistory.addEventListener('click', ()=>{ setActiveNav(navHistory); showSection(historySection); });
+  navStats.addEventListener('click', ()=>{ setActiveNav(navStats); showSection(statsSection); });
+  navSettings.addEventListener('click', ()=>{ setActiveNav(navSettings); showSection(settingsSection); });
+
+  metricTabs.forEach(t => {
+    t.addEventListener('click', (ev) => showMetric(ev.currentTarget.dataset.metric));
+  });
+
+  // --- GPS handlers & recording ---
+  const AUTO_PAUSE_SPEED_KMH = 1.2;
+  const AUTO_PAUSE_DELAY_MS = 9000;
+
+  function onPosition(pos) {
+    const c = pos.coords;
+    renderSignal(c.accuracy);
+
+    // first fix handling when not recording: center map
+    if (!lastPos && !recording) {
+      try { map.setView([c.latitude, c.longitude], 16); } catch(e){}
+      statusEl.textContent = "GPS acquired (ready).";
+      modeLabel.textContent = "GPS";
+    }
+
+    if (!recording) return;
+
+    const now = Date.now();
+    const cur = { lat: c.latitude, lon: c.longitude, t: now, alt: (c.altitude == null ? null : c.altitude), speed: (c.speed != null ? c.speed*3.6 : null), acc: c.accuracy };
+
+    // first recorded sample
+    if (!lastPos) {
+      lastPos = cur;
+      points = [cur];
+      polyline.setLatLngs([[cur.lat, cur.lon]]);
+      if (marker) map.removeLayer(marker);
+      marker = L.circleMarker([cur.lat, cur.lon], { radius:6, color:"#06b6d4", fill:true }).addTo(map);
+      map.panTo([cur.lat, cur.lon]);
+      statusEl.textContent = "Recording — GPS fix.";
+      speak("GPS fix. Recording started.");
+      return;
+    }
+
+    // distance & filtering jitter
+    const d = haversine({lat:lastPos.lat, lon:lastPos.lon}, {lat:cur.lat, lon:cur.lon});
+    const minMove = Math.max(2, cur.acc ? cur.acc / 2 : 3);
+    if (d > minMove) {
+      distanceMeters += d;
+      polyline.addLatLng([cur.lat, cur.lon]);
+      points.push(cur);
+      lastPos = cur;
+      if (marker) marker.setLatLng([cur.lat, cur.lon]); else marker = L.circleMarker([cur.lat, cur.lon], { radius:6, color:"#06b6d4", fill:true }).addTo(map);
+      // keep map following on mobile; on large screens the user can pan
+      if (window.innerWidth < 900) map.panTo([cur.lat, cur.lon], { animate:true });
+    }
+
+    // speed & max
+    const curSpeed = cur.speed != null ? cur.speed : 0;
+    if (curSpeed > maxSpeed) maxSpeed = curSpeed;
+
+    // elevation (gain)
+    if (cur.alt != null) {
+      if (lastElevation != null && cur.alt > lastElevation + 1) elevationGain += (cur.alt - lastElevation);
+      lastElevation = cur.alt;
+    }
+
+    // auto-pause logic
+    if (curSpeed < AUTO_PAUSE_SPEED_KMH) {
+      if (!lowSpeedSince) lowSpeedSince = now;
+      else if (!paused && (now - lowSpeedSince) >= AUTO_PAUSE_DELAY_MS) {
+        paused = true;
+        pausedAt = now;
+        statusEl.textContent = "Auto-paused (no movement) ⏸";
+        speak("Auto paused");
+      }
+    } else {
+      lowSpeedSince = null;
+      if (paused) {
+        paused = false;
+        if (pausedAt) totalPausedMs += (now - pausedAt);
+        pausedAt = null;
+        statusEl.textContent = "Resumed ▶️";
+        speak("Ride resumed");
+      }
+    }
+
+    // per-km announce
+    const kms = distanceMeters / 1000;
+    if (kms >= nextVoiceKm) {
+      const hours = (Date.now() - startTime - totalPausedMs) / 3600000;
+      const avg = hours > 0 ? (distanceMeters/1000)/hours : 0;
+      speak(`Completed ${Math.floor(kms)} kilometers. Average ${avg.toFixed(1)} kilometers per hour.`);
+      nextVoiceKm = Math.floor(kms) + 1;
+    }
+
+    // elapsed & UI update
+    elapsedMs = Date.now() - startTime - totalPausedMs;
+    updateSmallUI(curSpeed);
+    updateBigUI(curSpeed);
+  }
+
+  function onError(err) {
+    console.warn('Geolocation error', err);
+    statusEl.textContent = "GPS error or denied";
+    modeLabel.textContent = "Manual (GPS denied)";
+    renderSignal(null);
+  }
+
+  function startRecording() {
+    if (!('geolocation' in navigator)) {
+      alert("Geolocation not supported.");
+      return;
+    }
+    // reset state
+    recording = true;
+    paused = false;
+    points = [];
+    distanceMeters = 0;
+    maxSpeed = 0;
+    elevationGain = 0;
+    lastElevation = null;
+    startTime = Date.now();
+    totalPausedMs = 0;
+    lastPos = null;
+    polyline.setLatLngs([]);
+    if (marker) { map.removeLayer(marker); marker = null; }
+    statusEl.textContent = "Searching for GPS fix…";
+    modeLabel.textContent = "GPS";
+    nextVoiceKm = 1;
+    // start watch
+    watchId = navigator.geolocation.watchPosition(onPosition, onError, {
+      enableHighAccuracy:true, maximumAge:1000, timeout:8000
+    });
+    // ensure Home is visible
+    setActiveNav(navHome);
+    showSection(homeSection);
+    speak("Starting ride");
+  }
+
+  function pauseManual() {
+    if (!recording || paused) return;
+    paused = true;
+    pausedAt = Date.now();
+    statusEl.textContent = "Paused ⏸";
+    speak("Ride paused");
+  }
+  function resumeManual() {
+    if (!recording || !paused) return;
+    paused = false;
+    if (pausedAt) { totalPausedMs += (Date.now() - pausedAt); pausedAt = null; }
+    statusEl.textContent = "Recording ▶️";
+    speak("Ride resumed");
+  }
+
+  function stopRecording() {
+    if (!recording) return;
+    recording = false;
+    if (watchId) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+    elapsedMs = Date.now() - startTime - totalPausedMs;
+    const kms = (distanceMeters/1000);
+    const hours = elapsedMs/3600000;
+    const avg = hours > 0 ? kms / hours : 0;
+    speak(`Ride ended. ${kms.toFixed(2)} kilometers. Average ${avg.toFixed(1)} kilometers per hour.`);
+    statusEl.textContent = "Ride ended 🏁";
+
+    // Save ride (summary + points)
+    const ride = {
+      id: Date.now(),
+      date: new Date().toISOString(),
+      distance_km: Number(kms.toFixed(2)),
+      duration_s: Math.round(elapsedMs/1000),
+      avg_kmh: Number(avg.toFixed(1)),
+      max_kmh: Number(maxSpeed.toFixed(1)),
+      elevation_m: Math.round(elevationGain),
+      points: points.map(p => ({lat:p.lat, lon:p.lon, t:p.t, alt:p.alt}))
+    };
+    const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    history.unshift(ride);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    renderHistory();
+    // show summary on Stats
+    setActiveNav(navStats);
+    showSection(statsSection);
+    showMetric('distance');
+    updateBigUI();
+  }
+
+  // --- History display & actions ---
+  function renderHistory() {
+    const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    historyList.innerHTML = "";
+    if (!history.length) {
+      historyList.innerHTML = `<div class="opacity-70 text-xs">No rides recorded yet.</div>`;
+      return;
+    }
+    history.forEach(r => {
+      const el = document.createElement('div');
+      el.className = "bg-white/5 p-2 rounded text-xs";
+      const dur = toHMS(r.duration_s * 1000);
+      el.innerHTML = `<div class="font-semibold">${new Date(r.date).toLocaleString()}</div>
+        <div class="opacity-80 mt-1">${r.distance_km} km • ${dur} • Avg ${r.avg_kmh} km/h • Max ${r.max_kmh} km/h • ${r.elevation_m} m</div>
+        <div class="mt-2 flex gap-2">
+          <button class="viewBtn px-2 py-1 rounded bg-cyan-500 text-slate-900 text-xs">View</button>
+          <button class="downloadBtn px-2 py-1 rounded bg-white/10 text-xs">Download GPX</button>
+        </div>`;
+      el.querySelector('.viewBtn').addEventListener('click', () => {
+        if (!r.points || !r.points.length) return alert("No points for this ride.");
+        const latlngs = r.points.map(p => [p.lat, p.lon]);
+        polyline.setLatLngs(latlngs);
+        map.fitBounds(polyline.getBounds(), { padding:[40,40] });
+        setActiveNav(navHome);
+        showSection(homeSection);
       });
-   }
-     
-        // Speak text using speech synthesis
-        function speak(text) {
-            if (!voiceEnabled || !speechSynth) return;
-            
-            // Cancel any ongoing speech
-            speechSynth.cancel();
-            
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.volume = voiceVolume;
-            utterance.rate = 1.0;
-            utterance.pitch = 1.0;
-            
-            speechSynth.speak(utterance);
-        }
-        
-        // Toggle voice guidance
-        function toggleVoice() {
-            voiceEnabled = !voiceEnabled;
-            
-            if (voiceEnabled) {
-                voiceBtn.classList.add('active');
-                voiceGuidanceCheckbox.checked = true;
-                speak("Voice guidance enabled");
-            } else {
-                voiceBtn.classList.remove('active');
-                voiceGuidanceCheckbox.checked = false;
-                speechSynth.cancel();
-            }
-        }
-        
-        // Event listeners
-        startBtn.addEventListener('click', startTracking);
-        pauseBtn.addEventListener('click', function() {
-            if (isPaused) {
-                startTracking();
-            } else {
-                pauseTracking();
-            }
+      el.querySelector('.downloadBtn').addEventListener('click', () => {
+        let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="RideFlow">\n<trk><name>Ride ${new Date(r.date).toLocaleString()}</name><trkseg>\n`;
+        r.points.forEach(p => {
+          const time = new Date(p.t).toISOString();
+          gpx += `<trkpt lat="${p.lat}" lon="${p.lon}"><ele>${p.alt ?? 0}</ele><time>${time}</time></trkpt>\n`;
         });
-        endBtn.addEventListener('click', endTracking);
-        
-        settingsBtn.addEventListener('click', () => {
-            settingsPanel.classList.toggle('hidden');
+        gpx += `</trkseg></trk>\n</gpx>`;
+        const blob = new Blob([gpx], {type: 'application/gpx+xml'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = `ride-${r.id}.gpx`; a.click();
+        URL.revokeObjectURL(url);
+      });
+      historyList.appendChild(el);
+    });
+  }
+
+  exportBtn.addEventListener('click', () => {
+    const data = localStorage.getItem(STORAGE_KEY) || "[]";
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'rideflow_history.json'; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  clearBtn.addEventListener('click', () => {
+    if (!confirm("Clear local history?")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    renderHistory();
+  });
+
+  downloadAllBtn.addEventListener('click', () => {
+    // download single zip-like JSON containing all rides' GPX (simple: one ZIP file is more work; we will export JSON of rides)
+    const data = localStorage.getItem(STORAGE_KEY) || "[]";
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'rideflow_all_rides.json'; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  clearAllBtn.addEventListener('click', () => {
+    if (!confirm("Delete ALL saved rides and settings?")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('rideflow_v2_settings');
+    renderHistory();
+  });
+
+  // Settings persist
+  userWeight.addEventListener('change', () => {
+    const s = JSON.parse(localStorage.getItem('rideflow_v2_settings')||'{}');
+    s.weightKg = Number(userWeight.value || 70);
+    localStorage.setItem('rideflow_v2_settings', JSON.stringify(s));
+  });
+  themeSwitch.addEventListener('change', () => {
+    const s = JSON.parse(localStorage.getItem('rideflow_v2_settings')||'{}');
+    s.lightMode = themeSwitch.checked;
+    localStorage.setItem('rideflow_v2_settings', JSON.stringify(s));
+    document.documentElement.classList.toggle('light', themeSwitch.checked);
+  });
+
+  // Buttons
+  startBtn.addEventListener('click', startRecording);
+  pauseBtn.addEventListener('click', pauseManual);
+  resumeBtn.addEventListener('click', resumeManual);
+  stopBtn.addEventListener('click', stopRecording);
+
+  // Metric tab default
+  showMetric('distance');
+
+  // load history & settings on init
+  (function init() {
+    renderHistory();
+    // load settings
+    const s = JSON.parse(localStorage.getItem('rideflow_v2_settings')||'{}');
+    userWeight.value = s.weightKg ?? 70;
+    themeSwitch.checked = !!s.lightMode;
+    if (s.lightMode) document.documentElement.classList.add('light');
+
+    // permissions check
+    if (!('geolocation' in navigator)) {
+      modeLabel.textContent = "Manual (no geolocation)";
+      statusEl.textContent = "Geolocation not supported.";
+      renderSignal(null);
+    } else {
+      try {
+        navigator.permissions.query({name:'geolocation'}).then(p => {
+          if (p.state === 'denied') { modeLabel.textContent = "Manual (GPS denied)"; statusEl.textContent = "GPS permission denied."; renderSignal(null); }
+          else { modeLabel.textContent = "GPS"; statusEl.textContent = "Ready. Press Start."; }
+          p.onchange = () => { modeLabel.textContent = p.state==='denied' ? "Manual (GPS denied)" : "GPS"; };
         });
-        
-        historyBtn.addEventListener('click', () => {
-            historyPanel.classList.remove('history-hidden');
-        });
-        
-        closeHistoryBtn.addEventListener('click', () => {
-            historyPanel.classList.add('history-hidden');
-        });
-        
-        deviceTypeSelect.addEventListener('change', applyDeviceOptimizations);
-        
-        themeToggle.addEventListener('change', function() {
-            if (this.checked) {
-                enableDarkMode();
-            } else {
-                enableLightMode();
-            }
-        });
-        
-        voiceBtn.addEventListener('click', toggleVoice);
-        
-        voiceGuidanceCheckbox.addEventListener('change', function() {
-            voiceEnabled = this.checked;
-            if (voiceEnabled) {
-                voiceBtn.classList.add('active');
-            } else {
-                voiceBtn.classList.remove('active');
-                speechSynth.cancel();
-            }
-        });
-        
-        voiceVolumeSlider.addEventListener('input', function() {
-            voiceVolume = parseFloat(this.value);
-        });
-        
-        testVoiceBtn.addEventListener('click', function() {
-            speak("This is a test of the voice guidance system");
-        });
-        
-        // Initialize the app
-        initApp();
+      } catch(e) { modeLabel.textContent = "GPS"; statusEl.textContent = "Ready. Press Start."; }
+    }
+    // make sure map sizes on load
+    setTimeout(()=>{ try { map.invalidateSize(); } catch(e){} }, 300);
+  })();
+
+})();
