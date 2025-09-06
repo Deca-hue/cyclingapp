@@ -33,6 +33,7 @@ function pauseRide() {
   clearInterval(timerInterval);
   navigator.geolocation.clearWatch(watchId);
   document.getElementById("ride-btn").innerText = "RESUME";
+  document.getElementById("end-btn").classList.remove("hidden"); // Show End button
   speak("Ride paused");
 }
 
@@ -44,6 +45,7 @@ function resumeRide() {
   timerInterval = setInterval(updateTime, 1000);
   watchId = navigator.geolocation.watchPosition(handlePos, handleError, {enableHighAccuracy:true,maximumAge:1000,timeout:5000});
   document.getElementById("ride-btn").innerText = "STOP";
+  document.getElementById("end-btn").classList.remove("hidden"); // Show End button
   speak("Ride resumed");
 }
 
@@ -81,6 +83,7 @@ function startRide() {
   timerInterval = setInterval(updateTime,1000);
   watchId = navigator.geolocation.watchPosition(handlePos, handleError, {enableHighAccuracy:true,maximumAge:1000,timeout:5000});
   document.getElementById("ride-btn").innerText="STOP";
+  document.getElementById("end-btn").classList.remove("hidden"); // Show End button
   speak("Ride started");
 }
 function stopRide() {
@@ -89,7 +92,20 @@ function stopRide() {
   navigator.geolocation.clearWatch(watchId);
   saveRide();
   document.getElementById("ride-btn").innerText="START";
+  document.getElementById("end-btn").classList.add("hidden"); // Hide End button
   speak("Ride stopped");
+}
+
+function endRide() {
+  if (!rideActive) return;
+  rideActive = false;
+  paused = false;
+  clearInterval(timerInterval);
+  navigator.geolocation.clearWatch(watchId);
+  saveRide();
+  document.getElementById("ride-btn").innerText = "START";
+  document.getElementById("end-btn").classList.add("hidden"); // Hide End button
+  speak("Ride ended");
 }
 
 // Handle GPS position
@@ -177,3 +193,34 @@ function speak(txt){ if(synth) synth.speak(new SpeechSynthesisUtterance(txt)); }
 
 // Init
 showPage("home");
+
+// ...existing code...
+
+let deferredPrompt;
+const installBtn = document.getElementById('install-btn');
+
+// Listen for the beforeinstallprompt event
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBtn.classList.remove('hidden');
+});
+
+// Handle the install button click
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        installBtn.classList.add('hidden');
+      }
+      deferredPrompt = null;
+    }
+  });
+}
+
+// Optionally hide the button after install
+window.addEventListener('appinstalled', () => {
+  installBtn.classList.add('hidden');
+});
