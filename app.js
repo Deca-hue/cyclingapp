@@ -304,8 +304,6 @@ document.getElementById("dark-mode").addEventListener("change", e => {
 });
 document.getElementById("ride-type").addEventListener("change", saveSettings);
 
-// Load settings on startup
-loadSettings();
 
 //stats page
 function loadStats() {
