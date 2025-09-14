@@ -33,7 +33,7 @@ function pauseRide() {
   clearInterval(timerInterval);
   // Do NOT clear geolocation watch here!
  document.getElementById("ride-btn").innerText = "RESUME";
-  document.getElementById("status").innerText = "Paused";
+  
   document.getElementById("end-btn").classList.remove("hidden"); 
   speak("Ride paused");
 }
