@@ -1,6 +1,6 @@
 const CACHE_NAME = "rideflow-v2";
 const CORE_ASSETS = [
-  "/",
+ 
   "index.html",
   "app.js",
   "manifest.json",
