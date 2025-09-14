@@ -139,6 +139,7 @@ function handlePos(pos) {
 
   // Speed + auto pause/resume with debounce
   let stillSince = null;
+  function handlePos(pos) {
   if(speed !== null) {
     let kph = speed*3.6;
     speeds.push(kph);
@@ -158,7 +159,7 @@ function handlePos(pos) {
       stillSince = null;
     }
   }
-}
+}}
 
 function handleError() {
   document.getElementById("gps-signal").innerText="No Signal";
@@ -176,7 +177,7 @@ function saveRide() {
   let rides = JSON.parse(localStorage.getItem("rides")||"[]");
   rides.push({
     time:document.getElementById("time").innerText,
-    dist:formatDistance(totalDistance),
+    dist:totalDistance,
     max:maxSpeed.toFixed(1),
     avg:(speeds.reduce((a,b)=>a+b,0)/speeds.length).toFixed(1),
     elev:elevationGain.toFixed(0),
@@ -248,17 +249,16 @@ let settings = {
 };
 
 function loadSettings() {
-  const settings = JSON.parse(localStorage.getItem("settings") || "{}");
-
-  if (settings.weight) document.getElementById("weight").value = settings.weight;
-  if (settings.autoPause !== undefined) document.getElementById("auto-pause").checked = settings.autoPause;
-  if (settings.units) document.getElementById("units").value = settings.units;
-  if (settings.darkMode !== undefined) {
-    document.getElementById("dark-mode").checked = settings.darkMode;
-    applyDarkMode(settings.darkMode);
-  }
+  let saved = JSON.parse(localStorage.getItem("settings") || "{}");
+  Object.assign(settings, saved); // merge into global
+  document.getElementById("weight").value = settings.weight;
+  document.getElementById("auto-pause").checked = settings.autoPause;
+  document.getElementById("units").value = settings.units;
+  document.getElementById("dark-mode").checked = settings.darkMode;
+  applyDarkMode(settings.darkMode);
   if (settings.rideType) document.getElementById("ride-type").value = settings.rideType;
 }
+
 
 
 function saveSettings() {
