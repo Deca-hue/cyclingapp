@@ -46,7 +46,7 @@ function resumeRide() {
   timerInterval = setInterval(updateTime, 1000);
   // No need to re-register watchPosition if it was never cleared
   document.getElementById("ride-btn").innerText = "STOP";
-  document.getElementById("status").innerText = "Recording";
+ 
   document.getElementById("end-btn").classList.remove("hidden"); 
   speak("Ride resumed");
 }
