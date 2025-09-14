@@ -336,7 +336,7 @@ function loadStats() {
 loadSettings();
 // --- Service Worker Registration ---
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js").then(reg => {
+  navigator.serviceWorker.register("service-worker.js").then(reg => {
     reg.addEventListener("updatefound", () => {
       const newWorker = reg.installing;
       newWorker.addEventListener("statechange", () => {
