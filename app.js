@@ -334,3 +334,40 @@ function loadStats() {
   document.getElementById("stat-elev").innerText = elev.toFixed(0);
 }
 loadSettings();
+// --- Service Worker Registration ---
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/service-worker.js").then(reg => {
+    if (reg.waiting) {
+      showUpdateBanner(reg.waiting);
+    }
+
+    reg.addEventListener("updatefound", () => {
+      const newWorker = reg.installing;
+      newWorker.addEventListener("statechange", () => {
+        if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+          showUpdateBanner(newWorker);
+        }
+      });
+    });
+  });
+}
+
+function showUpdateBanner(worker) {
+  const banner = document.createElement("div");
+  banner.className =
+    "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded shadow-lg flex gap-2 items-center";
+  banner.innerHTML = `
+    <span>🚀 New version available</span>
+    <button class="bg-white text-blue-600 px-2 py-1 rounded">Update</button>
+  `;
+  document.body.appendChild(banner);
+
+  banner.querySelector("button").addEventListener("click", () => {
+    worker.postMessage({ action: "skipWaiting" });
+  });
+}
+
+navigator.serviceWorker.addEventListener("controllerchange", () => {
+  window.location.reload();
+});
+// --- End of PWA & SW ---

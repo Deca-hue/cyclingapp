@@ -1,8 +1,5 @@
-// 💡 Auto-increment cache version when you update files
-const CACHE_VERSION = "v" + new Date().getTime();
-const CACHE_NAME = `rideflow-${CACHE_VERSION}`;
-
-const ASSETS = [
+const CACHE_NAME = "rideflow-v2";
+const CORE_ASSETS = [
   "/",
   "/index.html",
   "/app.js",
@@ -14,34 +11,49 @@ const ASSETS = [
   "https://unpkg.com/leaflet/dist/leaflet.js"
 ];
 
-// Install and cache all assets
+// Install → cache everything
 self.addEventListener("install", e => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
-  );
-
-  // 🚀 Skip waiting immediately
-  self.skipWaiting();
+  self.skipWaiting(); // SW will be installed immediately
+  e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(CORE_ASSETS)));
 });
 
-// Activate: remove old caches
+// Activate → clear old caches
 self.addEventListener("activate", e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-      )
-    )
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
+      await self.clients.claim();
+    })()
   );
-
-  // 🚀 Take control right away
-  self.clients.claim();
 });
 
-// Fetch: serve from cache, fallback to network
+// Fetch strategy
 self.addEventListener("fetch", e => {
-  e.respondWith(
-    caches.match(e.request).then(resp => resp || fetch(e.request))
-  );
+  const url = new URL(e.request.url);
+
+  // Network-first for core files
+  if (url.pathname.endsWith("index.html") || url.pathname.endsWith("app.js")) {
+    e.respondWith(
+      fetch(e.request)
+        .then(resp =>
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(e.request, resp.clone());
+            return resp;
+          })
+        )
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Cache-first for everything else
+  e.respondWith(caches.match(e.request).then(resp => resp || fetch(e.request)));
 });
-// You can add more advanced caching strategies as needed
+
+self.addEventListener("message", e => {
+  if (e.data.action === "skipWaiting") {
+    self.skipWaiting();
+  }
+});
+// --- End of Service Worker ---
