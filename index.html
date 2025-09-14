@@ -169,39 +169,7 @@
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="app.js"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js').catch(console.error);
-      });
-    }
-    let deferredPrompt;
-    const installBtn = document.getElementById('install-btn');
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      installBtn.classList.remove('hidden');
-    });
-    installBtn.addEventListener('click', () => {
-      installBtn.classList.add('hidden');
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then((choiceResult) => {
-        deferredPrompt = null;
-      });
-    });
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        document.getElementById('update-banner').classList.remove('hidden');
-      });
-    }
-    window.addEventListener('load', () => {
-      showPage('home');
-      loadSettings();
-      loadHistory();
-      updateStats();
-    });
-    
-  </script>
+  <script src="service-worker.js"></script>
 
   <div id="update-banner" class="hidden fixed bottom-0 left-0 right-0 bg-yellow-500 text-black text-center p-3 z-50 shadow-lg">
   <span>🚴 A new version of RideFlow is available.</span>
