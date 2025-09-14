@@ -168,7 +168,7 @@
         &copy; 2024 RideFlow
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="app.js?v=20250913"></script>
+  <script src="app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -183,7 +183,7 @@
     else el.src = url;
   });
   </script>
-  
+
   <div id="update-banner" class="hidden fixed bottom-0 left-0 right-0 bg-yellow-500 text-black text-center p-3 z-50 shadow-lg">
   <span>🚴 A new version of RideFlow is available.</span>
   <button onclick="window.location.reload()" class="ml-3 bg-black text-white px-3 py-1 rounded">
