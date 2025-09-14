@@ -1,11 +1,11 @@
 const CACHE_NAME = "rideflow-v2";
 const CORE_ASSETS = [
   "/",
-  "/index.html",
-  "/app.js",
-  "/manifest.json",
-  "/icon-192.png",
-  "/icon-512.png",
+  "index.html",
+  "app.js",
+  "manifest.json",
+  "icon-192.png",
+  "icon-512.png",
   "https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css",
   "https://unpkg.com/leaflet/dist/leaflet.css",
   "https://unpkg.com/leaflet/dist/leaflet.js"
