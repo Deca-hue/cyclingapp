@@ -134,10 +134,11 @@ function handlePos(pos) {
   }
 
   prevPos = {lat:latitude, lon:longitude, alt:altitude};
-  document.getElementById("distance").innerText=(totalDistance/1000).toFixed(2);
+ document.getElementById("distance").innerText = formatDistance(totalDistance);
 
 
   // Speed + auto pause/resume with debounce
+  let stillSince = null;
   if(speed !== null) {
     let kph = speed*3.6;
     speeds.push(kph);
@@ -175,7 +176,7 @@ function saveRide() {
   let rides = JSON.parse(localStorage.getItem("rides")||"[]");
   rides.push({
     time:document.getElementById("time").innerText,
-    dist:(totalDistance/1000).toFixed(2),
+    dist:formatDistance(totalDistance),
     max:maxSpeed.toFixed(1),
     avg:(speeds.reduce((a,b)=>a+b,0)/speeds.length).toFixed(1),
     elev:elevationGain.toFixed(0),
@@ -237,3 +238,81 @@ if (installBtn) {
 window.addEventListener('appinstalled', () => {
   installBtn.classList.add('hidden');
 });
+
+// Settings
+let settings = {
+  weight: 70,
+  autoPause: true,
+  units: "km",
+  darkMode: true
+};
+
+function loadSettings() {
+  const stored = JSON.parse(localStorage.getItem("settings")||"{}");
+  settings = {...settings, ...stored};
+
+  document.getElementById("weight").value = settings.weight;
+  document.getElementById("auto-pause").checked = settings.autoPause;
+  document.getElementById("units").value = settings.units;
+  document.getElementById("dark-mode").checked = settings.darkMode;
+
+  applyTheme();
+}
+
+function saveSettings() {
+  settings.weight = parseFloat(document.getElementById("weight").value) || 70;
+  settings.autoPause = document.getElementById("auto-pause").checked;
+  settings.units = document.getElementById("units").value;
+  settings.darkMode = document.getElementById("dark-mode").checked;
+  localStorage.setItem("settings", JSON.stringify(settings));
+  applyTheme();
+}
+
+document.querySelectorAll("#page-settings input, #page-settings select")
+  .forEach(el => el.addEventListener("change", saveSettings));
+
+function applyTheme() {
+  if (settings.darkMode) {
+    document.documentElement.classList.add("bg-gray-900","text-white");
+  } else {
+    document.documentElement.classList.remove("bg-gray-900","text-white");
+  }
+}
+
+function formatDistance(meters) {
+  if (settings.units === "mi") {
+    return (meters/1609.34).toFixed(2)+" mi";
+  } else {
+    return (meters/1000).toFixed(2)+" km";
+  }
+}
+
+//stats page
+function loadStats() {
+  let rides = JSON.parse(localStorage.getItem("rides") || "[]");
+  if (rides.length === 0) {
+    document.getElementById("lifetime-stats").innerText = "No rides recorded yet.";
+    return;
+  }
+
+  let dist = rides.reduce((a, b) => a + parseFloat(b.dist), 0);
+  let elev = rides.reduce((a, b) => a + parseFloat(b.elev), 0);
+  let max = Math.max(...rides.map(r => parseFloat(r.max)));
+  let avg = (rides.reduce((a, b) => a + parseFloat(b.avg), 0) / rides.length).toFixed(1);
+
+  document.getElementById("lifetime-stats").innerText =
+    `Total Rides: ${rides.length}, Distance: ${dist.toFixed(2)} km`;
+
+  // Update stat cards
+  document.getElementById("stat-distance").innerText = dist.toFixed(2);
+  document.getElementById("stat-time").innerText =
+    rides.reduce((a, b) => {
+      let [m, s] = b.time.split(":").map(Number);
+      return a + (m * 60 + s);
+    }, 0) + " sec"; // (you can format into hh:mm:ss later)
+
+  document.getElementById("stat-avg").innerText = avg;
+  document.getElementById("stat-max").innerText = max.toFixed(1);
+  document.getElementById("stat-elev").innerText = elev.toFixed(0);
+}
+loadSettings();

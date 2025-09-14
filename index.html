@@ -64,20 +64,77 @@
     </section>
 
     <!-- Stats -->
-    <section id="page-stats" class="hidden p-4">
-      <h2 class="text-xl font-bold mb-4">Lifetime Stats</h2>
-      <p id="lifetime-stats">Loading...</p>
-    </section>
+   <!-- Stats Page -->
+<div id="page-stats" class="hidden p-4 space-y-6">
+  <!-- Lifetime Summary -->
+  <div class="bg-gray-900 p-5 rounded-xl shadow-md text-center">
+    <h2 class="text-xl font-bold text-blue-400">Lifetime Stats</h2>
+    <p id="lifetime-stats" class="text-lg text-gray-300 mt-2">Loading...</p>
+  </div>
+
+  <!-- Stat Grid -->
+  <div class="grid grid-cols-2 gap-4">
+    <!-- Total Distance -->
+    <div class="bg-gray-800 p-6 rounded-xl shadow text-center">
+      <p class="text-3xl font-bold text-blue-400" id="stat-distance">0</p>
+      <p class="text-gray-400">Total Distance (km)</p>
+    </div>
+
+    <!-- Total Time -->
+    <div class="bg-gray-800 p-6 rounded-xl shadow text-center">
+      <p class="text-3xl font-bold text-blue-400" id="stat-time">0</p>
+      <p class="text-gray-400">Total Time</p>
+    </div>
+
+    <!-- Average Speed -->
+    <div class="bg-gray-800 p-6 rounded-xl shadow text-center">
+      <p class="text-3xl font-bold text-blue-400" id="stat-avg">0</p>
+      <p class="text-gray-400">Avg Speed (km/h)</p>
+    </div>
+
+    <!-- Max Speed -->
+    <div class="bg-gray-800 p-6 rounded-xl shadow text-center">
+      <p class="text-3xl font-bold text-blue-400" id="stat-max">0</p>
+      <p class="text-gray-400">Max Speed (km/h)</p>
+    </div>
+
+    <!-- Elevation Gain -->
+    <div class="bg-gray-800 p-6 rounded-xl shadow text-center col-span-2">
+      <p class="text-3xl font-bold text-blue-400" id="stat-elev">0</p>
+      <p class="text-gray-400">Total Elevation Gain (m)</p>
+    </div>
+  </div>
+</div>
+
 
     <!-- Settings -->
-    <section id="page-settings" class="hidden p-4">
-      <h2 class="text-xl font-bold mb-4">Settings</h2>
-      <label class="block mb-2">Weight (kg): 
-        <input id="weight" type="number" class="p-2 bg-gray-700 rounded w-24" value="70">
-      </label>
-      <button onclick="clearHistory()" class="mt-4 px-4 py-2 bg-red-600 rounded">Clear History</button>
+      <section id="page-settings" class="hidden p-4">
+  <h2 class="text-xl font-bold mb-4">Settings</h2>
 
-    </section>
+  <label class="block mb-2">Weight (kg): 
+    <input id="weight" type="number" class="p-2 bg-gray-700 rounded w-24" value="70">
+  </label>
+
+  <label class="flex items-center mb-2">
+    <input id="auto-pause" type="checkbox" class="mr-2">
+    Auto Pause/Resume
+  </label>
+
+  <label class="block mb-2">Units:
+    <select id="units" class="p-2 bg-gray-700 rounded">
+      <option value="km">Kilometers</option>
+      <option value="mi">Miles</option>
+    </select>
+  </label>
+
+  <label class="flex items-center mb-2">
+    <input id="dark-mode" type="checkbox" class="mr-2" checked>
+    Dark Mode
+  </label>
+
+  <button onclick="clearHistory()" class="mt-4 px-4 py-2 bg-red-600 rounded">Clear History</button>
+</section>
+
   </main>
   <button id="install-btn" class="fixed bottom-6 right-6 bg-blue-600 text-white px-4 py-2 rounded shadow-lg z-50 hidden">
   Download App
