@@ -33,7 +33,7 @@ function pauseRide() {
   clearInterval(timerInterval);
   // Do NOT clear geolocation watch here!
  document.getElementById("ride-btn").innerText = "RESUME";
-
+  document.getElementById("status").innerText = "Paused";
   document.getElementById("end-btn").classList.remove("hidden"); 
   speak("Ride paused");
 }
@@ -46,7 +46,7 @@ function resumeRide() {
   timerInterval = setInterval(updateTime, 1000);
   // No need to re-register watchPosition if it was never cleared
   document.getElementById("ride-btn").innerText = "STOP";
- 
+  document.getElementById("status").innerText = "Recording";
   document.getElementById("end-btn").classList.remove("hidden"); 
   speak("Ride resumed");
 }
@@ -92,7 +92,7 @@ function startRide() {
   timerInterval = setInterval(updateTime,1000);
   watchId = navigator.geolocation.watchPosition(handlePos, handleError, {enableHighAccuracy:true,maximumAge:1000,timeout:5000});
   document.getElementById("ride-btn").innerText="STOP";
-
+  document.getElementById("status").innerText = "Recording";
   document.getElementById("end-btn").classList.remove("hidden"); 
   speak("Ride started");
 }
