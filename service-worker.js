@@ -11,49 +11,65 @@ const CORE_ASSETS = [
   "https://unpkg.com/leaflet/dist/leaflet.js"
 ];
 
-// Install → cache everything
-self.addEventListener("install", e => {
-  self.skipWaiting(); // SW will be installed immediately
-  e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(CORE_ASSETS)));
-});
-
-// Activate → clear old caches
-self.addEventListener("activate", e => {
-  e.waitUntil(
-    (async () => {
-      const keys = await caches.keys();
-      await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
-      await self.clients.claim();
-    })()
+// Install → cache assets safely
+self.addEventListener("install", event => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(async cache => {
+      await Promise.allSettled(
+        CORE_ASSETS.map(async asset => {
+          try {
+            const response = await fetch(asset, { cache: "no-cache" });
+            if (response.ok) {
+              await cache.put(asset, response.clone());
+            } else {
+              console.warn("[SW] Skipped:", asset, response.status);
+            }
+          } catch (err) {
+            console.warn("[SW] Failed:", asset, err.message);
+          }
+        })
+      );
+    })
   );
 });
 
-// Fetch strategy
-self.addEventListener("fetch", e => {
-  const url = new URL(e.request.url);
+// Activate → clean old caches
+self.addEventListener("activate", event => {
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
+});
 
-  // Network-first for core files
+// Fetch → network-first for core, cache-first for others
+self.addEventListener("fetch", event => {
+  const url = new URL(event.request.url);
+
   if (url.pathname.endsWith("index.html") || url.pathname.endsWith("app.js")) {
-    e.respondWith(
-      fetch(e.request)
+    event.respondWith(
+      fetch(event.request)
         .then(resp =>
           caches.open(CACHE_NAME).then(cache => {
-            cache.put(e.request, resp.clone());
+            cache.put(event.request, resp.clone());
             return resp;
           })
         )
-        .catch(() => caches.match(e.request))
+        .catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // Cache-first for everything else
-  e.respondWith(caches.match(e.request).then(resp => resp || fetch(e.request)));
+  event.respondWith(
+    caches.match(event.request).then(resp => resp || fetch(event.request))
+  );
 });
 
-self.addEventListener("message", e => {
-  if (e.data.action === "skipWaiting") {
+// Listen for skipWaiting trigger
+self.addEventListener("message", event => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
 });
-// --- End of Service Worker ---
