@@ -239,7 +239,7 @@ window.addEventListener('appinstalled', () => {
   installBtn.classList.add('hidden');
 });
 
-// Settings
+// Settings page functionality
 let settings = {
   weight: 70,
   autoPause: true,
@@ -248,36 +248,44 @@ let settings = {
 };
 
 function loadSettings() {
-  const stored = JSON.parse(localStorage.getItem("settings")||"{}");
-  settings = {...settings, ...stored};
+  const settings = JSON.parse(localStorage.getItem("settings") || "{}");
 
-  document.getElementById("weight").value = settings.weight;
-  document.getElementById("auto-pause").checked = settings.autoPause;
-  document.getElementById("units").value = settings.units;
-  document.getElementById("dark-mode").checked = settings.darkMode;
-
-  applyTheme();
+  if (settings.weight) document.getElementById("weight").value = settings.weight;
+  if (settings.autoPause !== undefined) document.getElementById("auto-pause").checked = settings.autoPause;
+  if (settings.units) document.getElementById("units").value = settings.units;
+  if (settings.darkMode !== undefined) {
+    document.getElementById("dark-mode").checked = settings.darkMode;
+    applyDarkMode(settings.darkMode);
+  }
+  if (settings.rideType) document.getElementById("ride-type").value = settings.rideType;
 }
+
 
 function saveSettings() {
-  settings.weight = parseFloat(document.getElementById("weight").value) || 70;
-  settings.autoPause = document.getElementById("auto-pause").checked;
-  settings.units = document.getElementById("units").value;
-  settings.darkMode = document.getElementById("dark-mode").checked;
+  const settings = {
+    weight: document.getElementById("weight").value,
+    autoPause: document.getElementById("auto-pause").checked,
+    units: document.getElementById("units").value,
+    darkMode: document.getElementById("dark-mode").checked,
+    rideType: document.getElementById("ride-type").value
+  };
   localStorage.setItem("settings", JSON.stringify(settings));
-  applyTheme();
 }
+
 
 document.querySelectorAll("#page-settings input, #page-settings select")
   .forEach(el => el.addEventListener("change", saveSettings));
 
-function applyTheme() {
-  if (settings.darkMode) {
-    document.documentElement.classList.add("bg-gray-900","text-white");
+function applyDarkMode(enabled) {
+  if (enabled) {
+    document.documentElement.classList.add("dark");
+    document.body.classList.add("bg-gray-900", "text-white");
   } else {
-    document.documentElement.classList.remove("bg-gray-900","text-white");
+    document.documentElement.classList.remove("dark");
+    document.body.classList.remove("bg-gray-900", "text-white");
   }
 }
+
 
 function formatDistance(meters) {
   if (settings.units === "mi") {
@@ -286,6 +294,18 @@ function formatDistance(meters) {
     return (meters/1000).toFixed(2)+" km";
   }
 }
+
+document.getElementById("weight").addEventListener("input", saveSettings);
+document.getElementById("auto-pause").addEventListener("change", saveSettings);
+document.getElementById("units").addEventListener("change", saveSettings);
+document.getElementById("dark-mode").addEventListener("change", e => {
+  applyDarkMode(e.target.checked);
+  saveSettings();
+});
+document.getElementById("ride-type").addEventListener("change", saveSettings);
+
+// Load settings on startup
+loadSettings();
 
 //stats page
 function loadStats() {

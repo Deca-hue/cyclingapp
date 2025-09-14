@@ -108,32 +108,53 @@
 
 
     <!-- Settings -->
-      <section id="page-settings" class="hidden p-4">
+     <section id="page-settings" class="hidden p-4">
   <h2 class="text-xl font-bold mb-4">Settings</h2>
 
-  <label class="block mb-2">Weight (kg): 
-    <input id="weight" type="number" class="p-2 bg-gray-700 rounded w-24" value="70">
+  <!-- Weight -->
+  <label class="block mb-4">
+    Weight (kg):
+    <input id="weight" type="number" class="p-2 bg-gray-700 rounded w-24 ml-2" value="70">
   </label>
 
-  <label class="flex items-center mb-2">
+  <!-- Auto Pause -->
+  <label class="flex items-center mb-4">
     <input id="auto-pause" type="checkbox" class="mr-2">
     Auto Pause/Resume
   </label>
 
-  <label class="block mb-2">Units:
-    <select id="units" class="p-2 bg-gray-700 rounded">
+  <!-- Units -->
+  <label class="block mb-4">
+    Units:
+    <select id="units" class="p-2 bg-gray-700 rounded ml-2">
       <option value="km">Kilometers</option>
       <option value="mi">Miles</option>
     </select>
   </label>
 
-  <label class="flex items-center mb-2">
+  <!-- Dark Mode -->
+  <label class="flex items-center mb-4">
     <input id="dark-mode" type="checkbox" class="mr-2" checked>
     Dark Mode
   </label>
 
-  <button onclick="clearHistory()" class="mt-4 px-4 py-2 bg-red-600 rounded">Clear History</button>
+  <!-- Ride Type -->
+  <label class="block mb-6">
+    Ride Type:
+    <select id="ride-type" class="p-2 bg-gray-700 rounded ml-2">
+      <option value="Road">Road</option>
+      <option value="MTB">MTB</option>
+      <option value="Indoor">Indoor</option>
+      <option value="Gravel">Gravel</option>
+    </select>
+  </label>
+
+  <!-- Danger Zone -->
+  <button onclick="clearHistory()" class="px-4 py-2 bg-red-600 rounded shadow hover:bg-red-700">
+    Clear Ride History
+  </button>
 </section>
+
 
   </main>
   <button id="install-btn" class="fixed bottom-6 right-6 bg-blue-600 text-white px-4 py-2 rounded shadow-lg z-50 hidden">
