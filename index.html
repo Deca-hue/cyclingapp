@@ -64,7 +64,7 @@
     <!-- History -->
     <section id="page-history" class="hidden p-4">
       <h2 class="text-xl font-bold mb-4">Ride History</h2>
-      <ul id="ride-history" class="space-y-2"></ul>
+      <ul id="ride-history" class="space-y-4"></ul>
     </section>
 
     <!-- Stats -->
@@ -126,6 +126,27 @@
     <input id="auto-pause" type="checkbox" class="mr-2">
     Auto Pause/Resume
   </label>
+ <!-- Map Settings 
+    <div>
+      <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">Map & Location</h3>
+      <div class="flex items-center justify-between mb-2">
+        <label class="text-gray-700 dark:text-gray-200">Auto Recenter</label>
+        <input type="checkbox" id="autoRecenter" class="toggle-checkbox">
+      </div>
+      <div class="flex items-center justify-between mb-2">
+        <label class="text-gray-700 dark:text-gray-200">Offline Mode</label>
+        <input type="checkbox" id="offlineMode" class="toggle-checkbox">
+      </div>
+      <div class="flex items-center justify-between">
+        <label class="text-gray-700 dark:text-gray-200">Map Style</label>
+        <select id="mapStyle" class="bg-gray-100 dark:bg-gray-800 dark:text-gray-300rounded px-2 py-1">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="satellite">Satellite</option>
+          <option value="terrain">Terrain</option>
+        </select>
+      </div>
+    </div>-->
 
   <!-- Units -->
   <label class="block mb-4">
@@ -164,7 +185,9 @@
   Download App
 </button>
     <footer class="bg-gray-800 text-center text-sm p-2">
-        &copy; 2024 RideFlow
+  &copy; <span id="year"></span> RideFlow
+</footer>
+
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="app.js"></script>

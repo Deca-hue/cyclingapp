@@ -186,15 +186,67 @@ function saveRide() {
   localStorage.setItem("rides",JSON.stringify(rides));
 }
 function loadHistory() {
-  let rides = JSON.parse(localStorage.getItem("rides")||"[]");
-  let ul = document.getElementById("ride-history"); ul.innerHTML="";
-  rides.forEach(r=>{
-    let li=document.createElement("li");
-    li.className="bg-gray-800 p-3 rounded";
-    li.innerText=`${r.date} | ${r.dist} km | ${r.time} | max ${r.max} km/h`;
+  const rides = JSON.parse(localStorage.getItem("rides") || "[]");
+  const ul = document.getElementById("ride-history");
+  ul.innerHTML = "";
+
+  rides.forEach((r, index) => {
+    const li = document.createElement("li");
+    li.className =
+      "bg-gray-800 p-4 rounded-xl shadow-md flex flex-col md:flex-row md:items-center md:justify-between hover:bg-gray-700 transition mb-3";
+
+    li.innerHTML = `
+      <div class="mb-3 md:mb-0">
+        <p class="text-lg font-semibold text-blue-400">${r.date}</p>
+        <p class="text-sm text-gray-400">${r.type || "Road Ride"}</p>
+      </div>
+
+      <div class="flex items-center space-x-6 text-center">
+        <div>
+          <p class="text-xl font-bold">${r.dist}</p>
+          <p class="text-xs text-gray-400">Distance</p>
+        </div>
+        <div>
+          <p class="text-xl font-bold">${r.time}</p>
+          <p class="text-xs text-gray-400">Time</p>
+        </div>
+        <div>
+          <p class="text-xl font-bold">${r.max}</p>
+          <p class="text-xs text-gray-400">Max km/h</p>
+        </div>
+
+        <!-- 🗑️ Delete button -->
+        <button
+          class="ml-4 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-sm"
+          onclick="deleteRide(${index})"
+          title="Delete ride"
+        >
+          🗑️
+        </button>
+      </div>
+    `;
+
     ul.appendChild(li);
   });
 }
+
+// Delete a ride by index
+function deleteRide(index) {
+  const rides = JSON.parse(localStorage.getItem("rides") || "[]");
+  const ride = rides[index];
+
+  const confirmDelete = confirm(
+    `🗑️ Delete this ride?\n\n📅 ${ride.date}\n📏 ${ride.dist} | 🕒 ${ride.time}`
+  );
+
+  if (confirmDelete) {
+    rides.splice(index, 1);
+    localStorage.setItem("rides", JSON.stringify(rides));
+    loadHistory();
+  }
+}
+
+
 function loadStats() {
   let rides = JSON.parse(localStorage.getItem("rides")||"[]");
   let dist = rides.reduce((a,b)=>a+parseFloat(b.dist),0);
@@ -245,57 +297,58 @@ let settings = {
   weight: 70,
   autoPause: true,
   units: "km",
-  darkMode: true
+  darkMode: true,
+  rideType: "Road"
 };
 
+// 🟦 Load settings from localStorage into global + UI
 function loadSettings() {
   let saved = JSON.parse(localStorage.getItem("settings") || "{}");
-  Object.assign(settings, saved); // merge into global
+  Object.assign(settings, saved); // merge with defaults
+
   document.getElementById("weight").value = settings.weight;
   document.getElementById("auto-pause").checked = settings.autoPause;
   document.getElementById("units").value = settings.units;
   document.getElementById("dark-mode").checked = settings.darkMode;
+  document.getElementById("ride-type").value = settings.rideType;
+
   applyDarkMode(settings.darkMode);
-  if (settings.rideType) document.getElementById("ride-type").value = settings.rideType;
 }
 
-
-
+// 🟦 Save current UI state → global object + localStorage
 function saveSettings() {
-  const settings = {
-    weight: document.getElementById("weight").value,
-    autoPause: document.getElementById("auto-pause").checked,
-    units: document.getElementById("units").value,
-    darkMode: document.getElementById("dark-mode").checked,
-    rideType: document.getElementById("ride-type").value
-  };
+  settings.weight = Number(document.getElementById("weight").value);
+  settings.autoPause = document.getElementById("auto-pause").checked;
+  settings.units = document.getElementById("units").value;
+  settings.darkMode = document.getElementById("dark-mode").checked;
+  settings.rideType = document.getElementById("ride-type").value;
+
   localStorage.setItem("settings", JSON.stringify(settings));
 }
 
-
-document.querySelectorAll("#page-settings input, #page-settings select")
-  .forEach(el => el.addEventListener("change", saveSettings));
-
+// 🟦 Dark Mode toggle (use Tailwind's `dark:` variants)
 function applyDarkMode(enabled) {
-  if (enabled) {
-    document.documentElement.classList.add("dark");
-    document.body.classList.add("bg-gray-900", "text-white");
-  } else {
-    document.documentElement.classList.remove("dark");
-    document.body.classList.remove("bg-gray-900", "text-white");
-  }
+  document.documentElement.classList.toggle("dark", enabled);
 }
 
-
+// 🟦 Format distance depending on unit setting
 function formatDistance(meters) {
   if (settings.units === "mi") {
-    return (meters/1609.34).toFixed(2)+" mi";
+    return (meters / 1609.34).toFixed(2) + " mi";
   } else {
-    return (meters/1000).toFixed(2)+" km";
+    return (meters / 1000).toFixed(2) + " km";
   }
 }
 
-document.getElementById("weight").addEventListener("input", saveSettings);
+// 🟦 Debounce helper for weight input
+let saveTimer;
+function saveSettingsDebounced() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveSettings, 300);
+}
+
+// 🟦 Attach listeners
+document.getElementById("weight").addEventListener("input", saveSettingsDebounced);
 document.getElementById("auto-pause").addEventListener("change", saveSettings);
 document.getElementById("units").addEventListener("change", saveSettings);
 document.getElementById("dark-mode").addEventListener("change", e => {
@@ -303,6 +356,10 @@ document.getElementById("dark-mode").addEventListener("change", e => {
   saveSettings();
 });
 document.getElementById("ride-type").addEventListener("change", saveSettings);
+
+// 🟦 Load settings when app starts
+window.addEventListener("DOMContentLoaded", loadSettings);
+
 
 
 //stats page
@@ -367,3 +424,8 @@ if ("serviceWorker" in navigator) {
     });
   });
 }
+
+// Update year in footer
+document.getElementById("year").innerText = new Date().getFullYear();
+
+// --- service-worker.js ---
